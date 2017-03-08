@@ -33,7 +33,7 @@
      (let-values ([(ineq env) (parse-ineq first env)])
        (cons ineq (parse-list rest env)))]
     [,x (error 'parse "Malformed list ~s" x)]))
-(trace parse-list parse-ineq parse-term)
+
 (define (parse SUP)
   (parse-list SUP '()))
 
