@@ -1,5 +1,8 @@
-(load "semiunification.scm")
 (load "match.scm")
+
+(define var vector)
+(define var? vector?)
+(define (var=? x1 x2) (= (vector-ref x1 0) (vector-ref x2 0)))
 
 (define (parse-term term env)
   (match term
@@ -36,7 +39,3 @@
 
 (define (parse SUP)
   (parse-list SUP '()))
-
-(define example1
-  '((< (f a a) (f b (f c c)))
-    (< b c)))
