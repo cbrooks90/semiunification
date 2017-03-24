@@ -4,7 +4,8 @@
 
 (define (redex-args l-args r-args visited)
   (if (or (null? l-args) (null? r-args)) (values #f visited)
-      (let-values ([(subst visited~) (redex-term (car l-args) (car r-args))])
+      (let-values
+        ([(subst visited~) (redex-term (car l-args) (car r-args) visited)])
         (if subst
             (values subst #f)
             (redex-args (cdr l-args) (cdr r-args) visited~)))))
@@ -18,7 +19,7 @@
     [(var? l)
      (let ([prev-visit (assp (lambda (x) (var=? x l)) visited)])
        (if (and prev-visit (not (equal? (cdr prev-visit) r))); Redex II
-           (unify (cdr prev-visit)
+           (unify (cdr prev-visit) r)
            (values #f (cons `(,l . ,r) visited))))]
     [else (values #f visited)]))
 
