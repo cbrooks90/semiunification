@@ -2,20 +2,28 @@
 
 (define (freshen x) x)
 
-(define (redex-I-args l-args r-args)
+(define (redex-args l-args r-args visited)
   (cond
-    [(and (null? l-args) (null? r-args)) #f?]
+    [(and (null? l-args) (null? r-args)) (values #f visited)]
     [(or (null? l-args) (null? r-args)) (error #f "Arity mismatch")]
-    [else (or (redex-I-term (car l-args) (car r-args))
-              (redex-I-args (cdr l-args) (cdr r-args)))]))
+    [else
+     (let-values ([(subst visited~) (redex-term (car l-args) (car r-args))])
+       (if subst
+           (values subst #f)
+           (redex-args (cdr l-args) (cdr r-args))))]))
 
-(define (redex-I-term l r)
+(define (redex-term l r visited)
   (cond
-    [(and (var r) (not (var l))) `(subst ,r ,(freshen l))]
+    [(and (var? r) (not (var? l))) (values `(subst ,r ,(freshen l)) #f)]
     [(and (pair? l) (pair? r) (equal? (car l) (car r)))
-     (redex-I-args l r)]
-    [else #f]))
+     (redex-args l r visited)]
+    [(var? l)
+     (let ([prev-visit (assp (lambda (x) (var=? x l)) visited)])
+       (if prev-visit
+           ?
+           (values #f (cons `(,l . ,r) visited))))]
+    [else (values #f visited)]))
 
-(define (redex-I ineq)
+(define (redex ineq)
   (match ineq
-    [(< ,lhs ,rhs) (redex-I-term lhs rhs)]))
+    [(< ,lhs ,rhs) (redex-term lhs rhs '())]))
