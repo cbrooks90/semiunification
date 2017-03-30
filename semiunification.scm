@@ -26,3 +26,5 @@
 (define (redex ineq)
   (match ineq
     [(< ,lhs ,rhs) (redex-term lhs rhs '())]))
+
+(define (semiunify u v s))
