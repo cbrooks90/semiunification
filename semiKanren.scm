@@ -50,7 +50,7 @@
 (define (semiunify l r s eqn visited)
   (cond
     ((and (var? r) (not (var? l))); Redex I
-     (values (ext-s r (freshen l) s) visited))
+     (values (unify r (freshen l) s) visited))
     ((and (pair? l) (pair? r) (eq? (car l) (car r)))
      (let loop ((ls (cdr l)) (rs (cdr r)) (s s) (vs visited))
        (cond
