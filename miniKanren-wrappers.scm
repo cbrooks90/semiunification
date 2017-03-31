@@ -1,5 +1,6 @@
-(load "microKanren.scm")
-;;;; How to make a simple miniKanren (substitution only)
+;; Jason Hemann and Dan Friedman
+
+(load "semiKanren.scm")
 
 (define-syntax Zzz
   (syntax-rules ()
@@ -37,7 +38,7 @@
     ((_ (x ...) g0 g ...)
      (map reify-1st (take-all (call/goal (fresh (x ...) g0 g ...)))))))
 
-(define empty-state '(() . 0))
+(define empty-state (state '() 0 0))
 
 (define (call/goal g) (g empty-state))
 
@@ -54,7 +55,7 @@
       (if (null? $) '() (cons (car $) (take (- n 1) (cdr $)))))))
 
 (define (reify-1st s/c)
-  (let ((v (walk* (var 0) (car s/c))))
+  (let ((v (walk* (var 0) (subst s/c))))
     (walk* v (reify-s v '()))))
 
 (define (walk* v s)
@@ -88,17 +89,3 @@
                    (lambda (x)
                      (app-f/v* (- n 1) (cons x v*)))))))))
      (app-f/v* n '())))
-
-;;; Test programs
-
-(define-syntax test-check
-  (syntax-rules ()
-    ((_ title tested-expression expected-result)
-     (begin
-       (printf "Testing ~s\n" title)
-       (let* ((expected expected-result)
-              (produced tested-expression))
-         (or (equal? expected produced)
-             (errorf 'test-check
-               "Failed: ~a~%Expected: ~a~%Computed: ~a~%"
-               'tested-expression expected produced)))))))
