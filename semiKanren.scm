@@ -44,7 +44,7 @@
   (define (aux-var v)
     (list->vector (append (vector->list v) (list eqn))))
   (cond ((var? t) (aux-var t))
-        ((pair? t) (map (lambda (x) (freshen x eqn)) t))
+        ((pair? t) (cons (freshen (car t) eqn) (freshen (cdr t) eqn)))
         (else t)))
 
 (define (semiunify l r s eqn visited)
@@ -56,9 +56,9 @@
        (if s
            (semiunify (cdr l) (cdr r) s eqn visited)
            (values #f visited))))
-    ((var? l)
+    ((var? l); Redex II
      (let ((prev-visit (assp (lambda (x) (var=? x l)) visited)))
-       (if prev-visit; Redex II
+       (if prev-visit
            (unify (cdr prev-visit) r s)
            (values s (cons `(,l . ,r) visited)))))
     (else (values (and (equal? l r) s) visited))))
