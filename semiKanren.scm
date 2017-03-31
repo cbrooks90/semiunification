@@ -10,7 +10,7 @@
   `(,s ,vc . ,ec))
 (define subst car)
 (define var-no cadr)
-(define eq-no cdr)
+(define eq-no cddr)
 
 (define (walk u s)
   (let ((pr (and (var? u) (assp (lambda (v) (var=? u v)) s))))
@@ -25,7 +25,7 @@
                                (occurs x (cdr v) s)))))))
 
 (define (ext-s x v s)
-  (if (occurs x v s #f `((,x . ,v) . ,s))))
+  (if (occurs x v s) #f `((,x . ,v) . ,s)))
 
 (define (<= u v)
   (lambda (s/c)
@@ -50,15 +50,12 @@
 (define (semiunify l r s eqn visited)
   (cond
     ((and (var? r) (not (var? l))); Redex I
-     (values (unify r (freshen l) s) visited))
-    ((and (pair? l) (pair? r) (eq? (car l) (car r)))
-     (let loop ((ls (cdr l)) (rs (cdr r)) (s s) (vs visited))
-       (cond
-         ((and (null? ls) (null? rs)) (values s vs))
-         ((or (null? ls) (null? rs)) (values #f vs))
-         (else
-           (let-values (((s vs) (semiunify (car ls) (car rs) s eqn vs)))
-             (loop (cdr ls) (cdr rs) s vs))))))
+     (values (unify r (freshen l eqn) s) visited))
+    ((and (pair? l) (pair? r))
+     (let-values (((s visited) (semiunify (car l) (car r) s eqn visited)))
+       (if s
+           (semiunify (cdr l) (cdr r) s eqn visited)
+           (values #f visited))))
     ((var? l)
      (let ((prev-visit (assp (lambda (x) (var=? x l)) visited)))
        (if prev-visit; Redex II
@@ -72,12 +69,9 @@
       ((and (var? u) (var? v) (var=? u v)) s)
       ((var? u) (ext-s u v s))
       ((var? v) (ext-s v u s))
-      ((and (pair? u) (pair? v) (eq? (car l) (car r)))
-       (let loop ((us (cdr u)) (vs (cdr v)) (s s) (vs visited))
-         (if ((and (null? us) (null? vs)) s)
-             ((or (null? us) (null? vs)) #f)
-             (let-values (((s vs) (semiunify (car ls) (car rs) s eqn vs)))
-               (loop (cdr ls) (cdr rs) s vs)))))
+      ((and (pair? u) (pair? v))
+       (let ((s (unify (car u) (car v) s)))
+         (and s (unify (cdr u) (cdr v) s))))
       (else (and (equal? u v) s)))))
 
 (define (call/fresh f)
