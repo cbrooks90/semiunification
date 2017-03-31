@@ -42,7 +42,7 @@
 
 (define (freshen t eqn)
   (define (aux-var v)
-    (list->vector (append (vector->list x) (list eqn))))
+    (list->vector (append (vector->list v) (list eqn))))
   (cond ((var? t) (aux-var t))
         ((pair? t) (map (lambda (x) (freshen x eqn)) t))
         (else t)))
