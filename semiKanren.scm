@@ -59,7 +59,7 @@
     ((var? l); Redex II
      (let ((prev-visit (assp (lambda (x) (var=? x l)) visited)))
        (if prev-visit
-           (unify (cdr prev-visit) r s)
+           (values (unify (cdr prev-visit) r s) visited)
            (values s (cons `(,l . ,r) visited)))))
     (else (values (and (equal? l r) s) visited))))
 
