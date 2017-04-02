@@ -5,6 +5,7 @@
 (define (var c) (vector c))
 (define (var? x) (vector? x))
 (define (var=? x1 x2) (and (vector? x1) (equal? x1 x2)))
+(define (var-instance? x1 x2) (= (vector-ref x1 0) (vector-ref x2 0)))
 
 (define (state s vc ec)
   `(,s ,vc . ,ec))
@@ -16,11 +17,10 @@
   (let ((pr (and (var? u) (assp (lambda (v) (var=? u v)) s))))
     (if pr (walk (cdr pr) s) u)))
 
-; Might be able to omit since violations of occurs check violate R-acyclicity
 (define (occurs x v s)
   (let ((v (walk v s)))
     (cond
-      ((var? v) (var=? v x))
+      ((var? v) (var-instance? v x))
       (else (and (pair? v) (or (occurs x (car v) s)
                                (occurs x (cdr v) s)))))))
 
@@ -50,7 +50,7 @@
 (define (semiunify l r s eqn visited)
   (let ((l (walk l s)) (r (walk r s)))
     (cond
-      ((and (var? r) (not (var? l))); Redex I
+      ((var? r); Redex I
        (values (unify r (freshen l eqn) s) visited))
       ((and (pair? l) (pair? r))
        (let-values (((s visited) (semiunify (car l) (car r) s eqn visited)))
