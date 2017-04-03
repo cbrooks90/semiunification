@@ -50,24 +50,17 @@
         ((pair? t) (cons (freshen (car t) eqn) (freshen (cdr t) eqn)))
         (else t)))
 
-(define (semiunify l r s s~ eqn visited)
+(define (semiunify l r s s~ eqn)
   (let ((l (walk l s s~)) (r (walk r s s~)))
     (cond
-      ((var? l)
-       (values s (ext-s l r s~) visited))
-      ((var? r)
-       (values (unify r (freshen l eqn) s s~) visited))
+      ((var? l) (values s (ext-s l r s~)))
+      ((var? r) (values (ext-s r (freshen l eqn) s s~) s~))
       ((and (pair? l) (pair? r))
-       (let-values (((s visited) (semiunify (car l) (car r) s s~ eqn visited)))
+       (let-values (((s s~) (semiunify (car l) (car r) s s~ eqn)))
          (if s
-             (semiunify (cdr l) (cdr r) s s~ eqn visited)
-             (values #f visited))))
-      ((var? l); Redex II
-       (let ((prev-visit (assp (lambda (x) (var=? x l)) visited)))
-         (if prev-visit
-             (values (unify (cdr prev-visit) r s) visited)
-             (values s (cons `(,l . ,r) visited)))))
-      (else (values (and (equal? l r) s) visited)))))
+             (semiunify (cdr l) (cdr r) s s~ eqn)
+             (values #f #f))))
+      (else (values (and (equal? l r) s) s~)))))
 
 (define (unify u v s s~)
   (let ((u (walk u s s~)) (v (walk v s s~)))
