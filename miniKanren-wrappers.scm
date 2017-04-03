@@ -38,7 +38,7 @@
     ((_ (x ...) g0 g ...)
      (map reify-1st (take-all (call/goal (fresh (x ...) g0 g ...)))))))
 
-(define empty-state (state '() 0 0))
+(define empty-state (state '() '() 0 0))
 
 (define (call/goal g) (g empty-state))
 
