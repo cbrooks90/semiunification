@@ -14,21 +14,23 @@
 (define var-no caddr)
 (define eq-no cdddr)
 
-(define (walk u s s~)
-  (let ((pr (and (var? u)
-                 (or (assp (lambda (v) (var=? u v)) s)
-                     (assp (lambda (v) (var=? u v)) s~)))))
-    (if pr (walk (cdr pr) s) u)))
+(define (walk t s s~ prev-known)
+  (let ((known (and (var? t) (assp (lambda (v) (var=? t v)) s)))
+        (temp  (and (var? t) (assp (lambda (v) (var=? t v)) s~))))
+    (cond
+      (known (walk (cdr known) s s~ (cdr known)))
+      (temp  (walk (cdr temp) s s~ prev-known))
+      (else (values prev-known t)))))
 
 (define (occurs x v s s~)
-  (let ((v (walk v s s~)))
+  (let-values (((_ v) (walk v s s~)))
     (cond
       ((var? v) (var-instance? v x))
       (else (and (pair? v) (or (occurs x (car v) s s~)
                                (occurs x (cdr v) s s~)))))))
 
-(define (ext-s x v s)
-  (if (occurs x v s) #f `((,x . ,v) . ,s)))
+(define (ext-s x v s s~)
+  (if (occurs x v s s~) #f `((,x . ,v) . ,s)))
 
 (define (<= u v)
   (lambda (s/c)
