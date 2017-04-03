@@ -10,7 +10,7 @@
 (define (state s semi-s vc ec)
   `(,s ,semi-s ,vc . ,ec))
 (define subst car)
-(define ssubst cadr
+(define ssubst cadr)
 (define var-no caddr)
 (define eq-no cdddr)
 
@@ -23,7 +23,7 @@
       (else (values prev-known t)))))
 
 (define (occurs x v s s~)
-  (let-values (((_ v) (walk v s s~)))
+  (let-values (((_ v) (walk v s s~ #f)))
     (cond
       ((var? v) (var-instance? v x))
       (else (and (pair? v) (or (occurs x (car v) s s~)
@@ -34,7 +34,7 @@
 
 (define (<= u v)
   (lambda (s/c)
-    (let-values (((s s~ _) (semiunify u v (subst s/c) (ssubst s/c) (eq-no s/c) '())))
+    (let-values (((s s~) (semiunify u v (subst s/c) (ssubst s/c) (eq-no s/c))))
       (if s (unit (state s s~ (var-no s/c) (+ (eq-no s/c) 1))) mzero))))
 
 (define (== u v)
@@ -53,9 +53,10 @@
         (else t)))
 
 (define (semiunify l r s s~ eqn)
-  (let ((l (walk l s s~)) (r (walk r s s~)))
+  (let-values (((_1 l) (walk l s s~ #f)) ((_2 r) (walk r s s~ #f)))
     (cond
-      ((var? l) (values s (ext-s l r s~)))
+      ((and (var? l) (var? r) (var=? l r)) (values s s~))
+      ((var? l) (values s (ext-s (freshen l eqn) r s~ s)))
       ((var? r) (values (ext-s r (freshen l eqn) s s~) s~))
       ((and (pair? l) (pair? r))
        (let-values (((s s~) (semiunify (car l) (car r) s s~ eqn)))
@@ -65,11 +66,11 @@
       (else (values (and (equal? l r) s) s~)))))
 
 (define (unify u v s s~)
-  (let ((u (walk u s s~)) (v (walk v s s~)))
+  (let-values (((_1 u) (walk u s s~ #f)) ((_2 v) (walk v s s~ #f)))
     (cond
       ((and (var? u) (var? v) (var=? u v)) s)
-      ((var? u) (ext-s u v s))
-      ((var? v) (ext-s v u s))
+      ((var? u) (ext-s u v s s~))
+      ((var? v) (ext-s v u s s~))
       ((and (pair? u) (pair? v))
        (let ((s (unify (car u) (car v) s s~)))
          (and s (unify (cdr u) (cdr v) s s~))))
