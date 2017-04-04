@@ -36,6 +36,10 @@
   (run* (q) (fresh (x y z) (== q `(,x ,y ,z)) (<= `(,y . ,y) x) (== x `(1 . ,z))))
   '(((1 . 1) _.0 1)))
 
-(test-check 'R-acyclicity-failure
+(test-check 'R-acyclicity-failure-1
   (run* (q) (fresh (x y z) (== q `(,x ,y ,z)) (<= y z) (<= `(f ,x ,x) `(f ,y (f ,z ,z)))))
+  '())
+
+(test-check 'R-acyclicity-failure-2
+  (run* (q) (fresh (x y z) (== q `(,x ,y ,z)) (<= `(f ,x ,x) `(f ,y (f ,z ,z))) (<= y z)))
   '())
