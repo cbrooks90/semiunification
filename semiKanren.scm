@@ -13,20 +13,44 @@
 (define var-no cadr)
 (define eq-no cddr)
 
-(define (walk t s prev-known eqn)
-  (let ((known (and (var? t) (assp (lambda (v) (var=? t v)) s)))
-        (temp  (and (var? t) (assp (lambda (v) (var=? (specify t eqn) v)) s))))
-    (cond
-      (known (walk (cdr known) s (cdr known) eqn))
-      (temp  (walk (cdr temp) s prev-known eqn))
-      (else (values (or prev-known t) t)))))
+(define (prefix-len l1 l2 acc)
+  (cond
+    ((null? l1) acc)
+    ((null? l2) 0)
+    ((= (car l1) (car l2))
+     (prefix-len (cdr l1) (cdr l2) (+ acc 1)))
+    (else 0)))
+
+(define (resolve-var v s)
+  (let loop ((s s) (v (vector->list v)) (acc #f)
+             (length 0) (target (vector-length v)))
+    (if (null? s) acc
+        (let ((l (prefix-len (vector->list (caar s)) v 0)))
+          (cond
+            ((= l target) (cdar s))
+            ((> l length) (loop (cdr s) v (cdar s) l target))
+            (else (loop (cdr s) v acc length target)))))))
+
+(define (specify t eqn)
+  (if (not eqn) t
+      (let loop ((t t))
+        (cond ((var? t) (list->vector (append (vector->list t) (list eqn))))
+              ((pair? t) (cons (loop (car t)) (loop (cdr t))))
+              (else t)))))
+
+(define (walk u s eqn)
+  (if (not (var? u)) u
+      (cond
+        ((resolve-var (specify u eqn) s) => (lambda (x) (walk x s eqn)))
+        (else u))))
+
+(define (occurs x v s)
+  (let ((v (walk v s #f)))
+    (if (var? v) (var-instance? v x)
+        (and (pair? v) (or (occurs x (car v) s)
+                           (occurs x (cdr v) s))))))
 
 (define (ext-s x v s)
-  (define (occurs x v s)
-    (cond
-      ((var? v) (var-instance? v x))
-      (else (and (pair? v) (or (occurs x (car v) s)
-                               (occurs x (cdr v) s))))))
   (if (occurs x v s) #f `((,x . ,v) . ,s)))
 
 (define (<= u v)
@@ -42,27 +66,19 @@
 (define (unit s/c) (cons s/c mzero))
 (define mzero '())
 
-(define (specify t eqn)
-  (define (aux-var v)
-    (list->vector (append (vector->list v) (list eqn))))
-  (cond ((var? t) (aux-var t))
-        ((pair? t) (cons (specify (car t) eqn) (specify (cdr t) eqn)))
-        (else t)))
-
 (define (semiunify l r s eqn)
-  (let-values (((_1 l) (walk l s #f eqn)) ((_2 r) (walk r s #f eqn)))
+  (let ((l (walk l s eqn)) (r (walk r s eqn)))
     (cond
       ((and (var? l) (var? r) (var=? l r)) s)
-      ((and (var? l) (var? r)) (ext-s l r s))
-      ((var? l) (ext-s (specify l eqn) r s))
       ((var? r) (ext-s r (specify l eqn) s))
+      ((var? l) (ext-s (specify l eqn) r s))
       ((and (pair? l) (pair? r))
        (let ((s (semiunify (car l) (car r) s eqn)))
          (and s (semiunify (cdr l) (cdr r) s eqn))))
       (else (and (equal? l r) s)))))
 
 (define (unify u v s)
-  (let-values (((_1 u) (walk u s #f #f)) ((_2 v) (walk v s #f #f)))
+  (let ((u (walk u s #f)) (v (walk v s #f)))
     (cond
       ((and (var? u) (var? v) (var=? u v)) s)
       ((var? u) (ext-s u v s))
