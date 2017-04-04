@@ -14,22 +14,20 @@
 (define var-no caddr)
 (define eq-no cdddr)
 
-(define (walk t s s~ prev-known)
+(define (walk t s s~ prev-known eqn)
   (let ((known (and (var? t) (assp (lambda (v) (var=? t v)) s)))
-        (temp  (and (var? t) (assp (lambda (v) (var=? t v)) s~))))
+        (temp  (and (var? t) (assp (lambda (v) (var=? (freshen t eqn) v)) s~))))
     (cond
-      (known (walk (cdr known) s s~ (cdr known)))
-      (temp  (walk (cdr temp) s s~ prev-known))
-      (else (values prev-known t)))))
+      (known (walk (cdr known) s s~ (cdr known) eqn))
+      (temp  (walk (cdr temp) s s~ prev-known eqn))
+      (else (values (or prev-known t) t)))))
 
-(define (occurs x v s s~)
-  (let-values (((_ v) (walk v s s~ #f)))
+(define (ext-s x v s s~)
+  (define (occurs x v s s~)
     (cond
       ((var? v) (var-instance? v x))
       (else (and (pair? v) (or (occurs x (car v) s s~)
-                               (occurs x (cdr v) s s~)))))))
-
-(define (ext-s x v s s~)
+                               (occurs x (cdr v) s s~))))))
   (if (occurs x v s s~) #f `((,x . ,v) . ,s)))
 
 (define (<= u v)
@@ -39,8 +37,8 @@
 
 (define (== u v)
   (lambda (s/c)
-    (let ((s (unify u v (subst s/c) (ssubst s/c))))
-      (if s (unit (state s (ssubst s/c) (var-no s/c) (eq-no s/c))) mzero))))
+    (let ((s (unify u v (subst s/c) (ssubst s/c) (eq-no s/c))))
+      (if s (unit (state s (ssubst s/c) (var-no s/c) (+ (eq-no s/c) 1))) mzero))))
 
 (define (unit s/c) (cons s/c mzero))
 (define mzero '())
@@ -53,27 +51,28 @@
         (else t)))
 
 (define (semiunify l r s s~ eqn)
-  (let-values (((_1 l) (walk l s s~ #f)) ((_2 r) (walk r s s~ #f)))
+  (let-values (((_1 l) (walk l s s~ #f eqn)) ((_2 r) (walk r s s~ #f eqn)))
     (cond
       ((and (var? l) (var? r) (var=? l r)) (values s s~))
+      ((and (var? l) (var? r)) (values (ext-s l r s s~) s~))
       ((var? l) (values s (ext-s (freshen l eqn) r s~ s)))
       ((var? r) (values (ext-s r (freshen l eqn) s s~) s~))
       ((and (pair? l) (pair? r))
        (let-values (((s s~) (semiunify (car l) (car r) s s~ eqn)))
-         (if s
+         (if (and s s~)
              (semiunify (cdr l) (cdr r) s s~ eqn)
              (values #f #f))))
       (else (values (and (equal? l r) s) s~)))))
 
-(define (unify u v s s~)
-  (let-values (((_1 u) (walk u s s~ #f)) ((_2 v) (walk v s s~ #f)))
+(define (unify u v s s~ eqn)
+  (let-values (((_1 u) (walk u s s~ #f eqn)) ((_2 v) (walk v s s~ #f eqn)))
     (cond
       ((and (var? u) (var? v) (var=? u v)) s)
       ((var? u) (ext-s u v s s~))
       ((var? v) (ext-s v u s s~))
       ((and (pair? u) (pair? v))
-       (let ((s (unify (car u) (car v) s s~)))
-         (and s (unify (cdr u) (cdr v) s s~))))
+       (let ((s (unify (car u) (car v) s s~ eqn)))
+         (and s (unify (cdr u) (cdr v) s s~ eqn))))
       (else (and (equal? u v) s)))))
 
 (define (call/fresh f)
