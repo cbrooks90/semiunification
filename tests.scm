@@ -20,19 +20,19 @@
   (run* (q) (fresh (x y) (== q `(,x ,y)) (<= `(,y . ,y) x)))
   '(((_.0 . _.0) _.1)))
 
-(test-check 'left-structure-unbound
-  (run* (q) (fresh (x y z) (== q `(,x ,y ,z)) (== x `(1 . ,z)) (<= `(,y . ,y) x)))
-  '(((1 . 1) _.0 1)))
-
 (test-check 'right-structure-bound-1
-  (run* (q) (fresh (x z) (== q `(,x ,z)) (== x `(,z . ,z)) (<= `(1 . 1) x)))
+  (run* (q) (fresh (x y) (== q `(,x ,y)) (== x `(,y . ,y)) (<= `(1 . 1) x)))
   '(((1 . 1) 1)))
 
 (test-check 'right-structure-bound-2
-  (run* (q) (fresh (x z) (== q `(,x ,z)) (<= `(1 . 1) x) (== x `(,z . ,z))))
+  (run* (q) (fresh (x y) (== q `(,x ,y)) (<= `(1 . 1) x) (== x `(,y . ,y))))
   '(((1 . 1) 1)))
 
-(test-check 'indirect-right-bind
+(test-check 'indirect-right-bind-1
+  (run* (q) (fresh (x y z) (== q `(,x ,y ,z)) (== x `(1 . ,z)) (<= `(,y . ,y) x)))
+  '(((1 . 1) _.0 1)))
+
+(test-check 'indirect-right-bind-2
   (run* (q) (fresh (x y z) (== q `(,x ,y ,z)) (<= `(,y . ,y) x) (== x `(1 . ,z))))
   '(((1 . 1) _.0 1)))
 
