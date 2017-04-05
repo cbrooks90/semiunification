@@ -60,7 +60,7 @@
 
 (define (== u v)
   (lambda (s/c)
-    (let ((s (unify u v (subst s/c))))
+    (let ((s (semiunify u v (subst s/c) #f)))
       (if s (unit (state s (var-no s/c) (eq-no s/c))) mzero))))
 
 (define (unit s/c) (cons s/c mzero))
@@ -76,17 +76,6 @@
        (let ((s (semiunify (car l) (car r) s eqn)))
          (and s (semiunify (cdr l) (cdr r) s eqn))))
       (else (and (equal? l r) s)))))
-
-(define (unify u v s)
-  (let ((u (walk u s #f)) (v (walk v s #f)))
-    (cond
-      ((and (var? u) (var? v) (var=? u v)) s)
-      ((var? u) (ext-s u v s))
-      ((var? v) (ext-s v u s))
-      ((and (pair? u) (pair? v))
-       (let ((s (unify (car u) (car v) s)))
-         (and s (unify (cdr u) (cdr v) s))))
-      (else (and (equal? u v) s)))))
 
 (define (call/fresh f)
   (lambda (s/c)
