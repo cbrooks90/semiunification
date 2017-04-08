@@ -46,9 +46,10 @@
 
 (define (occurs x v s)
   (let ((v (walk v s #f)))
-    (if (var? v) (var-instance? v x)
-        (and (pair? v) (or (occurs x (car v) s)
-                           (occurs x (cdr v) s))))))
+    (cond ((and (var? v) (eq? v x)))
+          ((and (var? v) (var-instance? v x)) (error #f "R-acyclicity violation"))
+          (else (and (pair? v) (or (occurs x (car v) s)
+                                   (occurs x (cdr v) s)))))))
 
 (define (ext-s x v s)
   (if (occurs x v s) #f `((,x . ,v) . ,s)))
@@ -75,7 +76,8 @@
       ((and (pair? l) (pair? r))
        (let ((s (semiunify (car l) (car r) s eqn)))
          (and s (semiunify (cdr l) (cdr r) s eqn))))
-      (else (and (equal? l r) s)))))
+      ((equal? l r) s)
+      (else #f))))
 
 (define (call/fresh f)
   (lambda (s/c)
