@@ -13,24 +13,6 @@
 (define var-no cadr)
 (define eq-no cddr)
 
-(define (prefix-len l1 l2 acc)
-  (cond
-    ((null? l1) acc)
-    ((null? l2) 0)
-    ((= (car l1) (car l2))
-     (prefix-len (cdr l1) (cdr l2) (+ acc 1)))
-    (else 0)))
-
-(define (resolve-var v s)
-  (let loop ((s s) (v (vector->list v)) (acc #f)
-             (length 0) (target (vector-length v)))
-    (if (null? s) acc
-        (let ((l (prefix-len (vector->list (caar s)) v 0)))
-          (cond
-            ((= l target) (cdar s))
-            ((> l length) (loop (cdr s) v (cdar s) l target))
-            (else (loop (cdr s) v acc length target)))))))
-
 (define (specify t eqn)
   (if (not eqn) t
       (let loop ((t t))
@@ -71,8 +53,8 @@
   (let ((l (walk l s eqn)) (r (walk r s eqn)))
     (cond
       ((and (var? l) (var? r) (var=? l r)) s)
-      ((var? r) (ext-s r (specify l eqn) s))
       ((var? l) (ext-s (specify l eqn) r s))
+      ((var? r) (ext-s r (specify l eqn) s))
       ((and (pair? l) (pair? r))
        (let ((s (semiunify (car l) (car r) s eqn)))
          (and s (semiunify (cdr l) (cdr r) s eqn))))
