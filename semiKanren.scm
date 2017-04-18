@@ -64,11 +64,15 @@
 (define (antiunify u v s)
   (let ((u (walk u s #f)) (v (walk v s #f)))
     (cond
-      ((var=? u v) s)
       ((and (pair? u) (pair? v))
        (let ((s (antiunify (car u) (car v) s)))
          (antiunify (cdr u) (cdr v) s)))
-      (else ?))))
+      ((equal? u v) s)
+      ((var? u) (ext-s v u s))
+      ((var? v) (ext-s u v s))
+      (else
+        (let ((x (fresh-var)))
+          (ext-s x u (ext-s x v s)))))))
 
 (define (semiunify l r s eqn)
   (let ((l (walk l s eqn)) (r (walk r s eqn)))
