@@ -13,6 +13,13 @@
 (define var-no cadr)
 (define eq-no cddr)
 
+(define (resolve-var v s)
+  (let loop ((s s) (local #f))
+    (cond [(null? s) local]
+          [(and (var-instance? v (caar s)) (= (length (caar s)) 1))
+           (cdar s)]
+          [(equal? v (caar s)) (loop (cdr s) (cdar s))])))
+
 (define (specify t eqn)
   (if (not eqn) t
       (let loop ((t t))
@@ -46,8 +53,22 @@
     (let ((s (semiunify u v (subst s/c) #f)))
       (if s (unit (state s (var-no s/c) (eq-no s/c))) mzero))))
 
+(define (au u v)
+  (lambda (s/c)
+    (let ((s (antiunify u v (subst s/c))))
+      (unit (state s (var-no s/c) (eq-no s/c))))))
+
 (define (unit s/c) (cons s/c mzero))
 (define mzero '())
+
+(define (antiunify u v s)
+  (let ((u (walk u s #f)) (v (walk v s #f)))
+    (cond
+      ((var=? u v) s)
+      ((and (pair? u) (pair? v))
+       (let ((s (antiunify (car u) (car v) s)))
+         (antiunify (cdr u) (cdr v) s)))
+      (else ?))))
 
 (define (semiunify l r s eqn)
   (let ((l (walk l s eqn)) (r (walk r s eqn)))
