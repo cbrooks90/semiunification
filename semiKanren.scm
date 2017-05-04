@@ -5,58 +5,36 @@
 (define (var c) (vector c))
 (define (var? x) (vector? x))
 (define (var=? x1 x2) (and (vector? x1) (equal? x1 x2)))
-(define (var-instance? x1 x2) (= (vector-ref x1 0) (vector-ref x2 0)))
 
-(define (state s vc ec)
-  `(,s ,vc . ,ec))
+(define (state s ext vc)
+  `(,s ,ext . ,vc))
 (define subst car)
-(define var-no cadr)
-(define eq-no cddr)
+(define ext-vars cadr)
+(define var-no cddr)
 
-(define (resolve-var v s)
-  (let loop ((s s) (local #f))
-    (cond [(null? s) local]
-          [(and (var-instance? v (caar s)) (= (length (caar s)) 1))
-           (cdar s)]
-          [(equal? v (caar s)) (loop (cdr s) (cdar s))])))
+(define (walk u s)
+  (let ((pr (and (var? u) (assp (lambda (v) (var=? u v)) s))))
+    (if pr (walk (cdr pr) s) u)))
 
-(define (specify t eqn)
-  (if (not eqn) t
-      (let loop ((t t))
-        (cond ((var? t) (list->vector (append (vector->list t) (list eqn))))
-              ((pair? t) (cons (loop (car t)) (loop (cdr t))))
-              (else t)))))
-
-(define (walk u s eqn)
-  (if (not (var? u)) u
-      (cond
-        ((resolve-var (specify u eqn) s) => (lambda (x) (walk x s eqn)))
-        (else u))))
-
-(define (occurs x v s)
-  (let ((v (walk v s #f)))
-    (cond ((and (var? v) (eq? v x)))
-          ((and (var? v) (var-instance? v x)) (error #f "R-acyclicity violation"))
-          (else (and (pair? v) (or (occurs x (car v) s)
-                                   (occurs x (cdr v) s)))))))
+;(define (occurs x v s)
+;  (let ((v (walk v s #f)))
+;    (cond ((and (var? v) (eq? v x)))
+;          ((and (var? v) (var-instance? v x)) (error #f "R-acyclicity violation"))
+;          (else (and (pair? v) (or (occurs x (car v) s)
+;                                   (occurs x (cdr v) s)))))))
 
 (define (ext-s x v s)
-  (if (occurs x v s) #f `((,x . ,v) . ,s)))
+  (cons `(,x . ,v) s))
 
 (define (<= u v)
   (lambda (s/c)
-    (let ((s (semiunify u v (subst s/c) (eq-no s/c))))
-      (if s (unit (state s (var-no s/c) (+ (eq-no s/c) 1))) mzero))))
+    (let-values (((global local) (semiunify u v (subst s/c) (ext-vars s/c) '())))
+      (if s (unit (state global local (var-no s/c))) mzero))))
 
-(define (== u v)
-  (lambda (s/c)
-    (let ((s (semiunify u v (subst s/c) #f)))
-      (if s (unit (state s (var-no s/c) (eq-no s/c))) mzero))))
-
-(define (au u v)
-  (lambda (s/c)
-    (let ((s (antiunify u v (subst s/c))))
-      (unit (state s (var-no s/c) (eq-no s/c))))))
+;(define (== u v)
+;  (lambda (s/c)
+;    (let-values (((global local) ((s (semiunify u v (subst s/c) #f)))
+;      (if s (unit (state s (var-no s/c) (eq-no s/c))) mzero))))
 
 (define (unit s/c) (cons s/c mzero))
 (define mzero '())
@@ -68,14 +46,15 @@
        (let ((s (antiunify (car u) (car v) s)))
          (antiunify (cdr u) (cdr v) s)))
       ((equal? u v) s)
-      ((var? u) (ext-s v u s))
-      ((var? v) (ext-s u v s))
+      ((var? u) (ext-s u v s))
+      ((var? v) (ext-s v u s))
       (else
         (let ((x (fresh-var)))
           (ext-s x u (ext-s x v s)))))))
 
-(define (semiunify l r s eqn)
-  (let ((l (walk l s eqn)) (r (walk r s eqn)))
+(trace-define (semiunify l r s extern local)
+  (let-values (((l l-extern?) (semiwalk l s extern local))
+               ((r r-extern?) (semiwalk r s extern local)))
     (cond
       ((and (var? l) (var? r) (var=? l r)) s)
       ((var? l) (ext-s (specify l eqn) r s))
@@ -89,7 +68,7 @@
 (define (call/fresh f)
   (lambda (s/c)
     (let ((c (var-no s/c)))
-      ((f (var c)) (state (subst s/c) (+ c 1) (eq-no s/c))))))
+      ((f (var c)) (state (subst s/c) (ext-vars s/c) (+ c 1))))))
 
 (define (disj g1 g2) (lambda (s/c) (mplus (g1 s/c) (g2 s/c))))
 (define (conj g1 g2) (lambda (s/c) (bind (g1 s/c) g2)))
