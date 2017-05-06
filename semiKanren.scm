@@ -38,11 +38,6 @@
     (let-values (((global local) (semiunify u v (subst s/c) (ext-vars s/c) '())))
       (if global (unit (state global (append local (ext-vars s/c)) (var-no s/c))) mzero))))
 
-;(define (== u v)
-;  (lambda (s/c)
-;    (let-values (((global local) ((s (semiunify u v (subst s/c) #f)))
-;      (if s (unit (state s (var-no s/c) (eq-no s/c))) mzero))))
-
 (define (unit s/c) (cons s/c mzero))
 (define mzero '())
 
@@ -50,21 +45,24 @@
   (let ((u (walk u s)) (v (walk v s)))
     (cond
       ((and (pair? u) (pair? v))
-       (cons (antiunify (car u) (car v) s)
-             (antiunify (cdr u) (cdr v) s)))
-      ((equal? u v) u)
+       (let-values (((t1 a-s) (antiunify (car u) (car v) s a-s))
+                    ((t2 a-s) (antiunify (cdr u) (cdr v) s a-s)))
+         (values (cons t1 t2) a-s)))
+      ((equal? u v) (values u a-s))
       ((assp (lambda (x) (equal? (cons u v) x)) a-s)
-       => (lambda (x) (cdr x)))
+       => (lambda (x) (values (cdr x) a-s)))
       (else
-        (let ((x (fresh-var)))
-          (ext-s (cons u v) x a-s))))))
+        (let ((x (gensym "x")))
+          (values x (ext-s (cons u v) x a-s)))))))
 
 (define (semiunify l r s extern local)
   (let-values
     (((l l-extern) (semiwalk l (append s local) extern #f))
      ((r r-extern) (semiwalk r (append s local) extern #f)))
     (cond
-      (l-extern (values s (ext-s l-extern (antiunify l r (append s local extern) '()) local)))
+      (l-extern
+        (let-values (((t _) (antiunify l r (append s local extern) '())))
+          (values s (ext-s l-extern t local))))
       (r-extern (let-values (((fail ls) (semiunify l r s extern local)))
                   (if (null? fail)
                       (values s (append ls local))
