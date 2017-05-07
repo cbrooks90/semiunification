@@ -93,6 +93,7 @@
       (<= x `(,y . (,y . ,y)))))
   '((_.0 _.1)))
 
+; There should be a difference between unbound and no constraint. Ask about this.
 (test-check 'bound-variable
   (run* (q)
     (fresh (x y)
@@ -115,6 +116,22 @@
       (<= `(1 . 1) x)
       (== x `(,y . ,y))))
   '(((1 . 1) 1)))
+
+(test-check 'right-structure-unbound-1
+  (run* (q)
+    (fresh (x y)
+      (== q `(,x ,y))
+      (<= `(,y . ,y) x)
+      (<= `(1 . 1) x)))
+  '(((1 . 1) _.0)))
+
+(test-check 'right-structure-unbound-2
+  (run* (q)
+    (fresh (x y)
+      (== q `(,x ,y))
+      (<= `(1 . 1) x)
+      (<= `(,y . ,y) x)))
+  '(((1 . 1) _.0)))
 
 (test-check 'indirect-right-bind-1
   (run* (q)
