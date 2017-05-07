@@ -38,6 +38,12 @@
     (let-values (((global local) (semiunify u v (subst s/c) (ext-vars s/c) '())))
       (if global (unit (state global (append local (ext-vars s/c)) (var-no s/c))) mzero))))
 
+(define (== u v)
+  (lambda (s/c)
+    (let*-values (((global local) (semiunify u v (subst s/c) (ext-vars s/c) '()))
+                  ((global local) (semiunify v u global (append local (ext-vars s/c)) '())))
+      (if global (unit (state global (append local (ext-vars s/c)) (var-no s/c))) mzero))))
+
 (define (unit s/c) (cons s/c mzero))
 (define mzero '())
 
