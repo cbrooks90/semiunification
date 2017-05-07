@@ -45,14 +45,14 @@
   (let ((u (walk u s)) (v (walk v s)))
     (cond
       ((and (pair? u) (pair? v))
-       (let-values (((t1 a-s) (antiunify (car u) (car v) s a-s))
-                    ((t2 a-s) (antiunify (cdr u) (cdr v) s a-s)))
+       (let*-values (((t1 a-s) (antiunify (car u) (car v) s a-s))
+                     ((t2 a-s) (antiunify (cdr u) (cdr v) s a-s)))
          (values (cons t1 t2) a-s)))
       ((equal? u v) (values u a-s))
       ((assp (lambda (x) (equal? (cons u v) x)) a-s)
        => (lambda (x) (values (cdr x) a-s)))
       (else
-        (let ((x (gensym "x")))
+        (let ((x (vector 'x)))
           (values x (ext-s (cons u v) x a-s)))))))
 
 (define (semiunify l r s extern local)
@@ -63,8 +63,8 @@
       (l-extern
         (let-values (((t _) (antiunify l r (append s local extern) '())))
           (values s (ext-s l-extern t local))))
-      (r-extern (let-values (((fail ls) (semiunify l r s extern local)))
-                  (if (null? fail)
+      (r-extern (let-values (((new ls) (semiunify l r s extern local)))
+                  (if (eq? new s)
                       (values s (append ls local))
                       (values #f #f))))
       ((and (var? l) (var? r) (var=? l r)) (values s local))
