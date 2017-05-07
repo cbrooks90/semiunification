@@ -1,16 +1,89 @@
 (load "miniKanren-wrappers.scm")
+(load "test-check.scm")
 
-(define-syntax test-check
-  (syntax-rules ()
-    ((_ title tested-expression expected-result)
-     (begin
-       (printf "Testing ~s\n" title)
-       (let* ((expected expected-result)
-              (produced tested-expression))
-         (or (equal? expected produced)
-             (errorf 'test-check
-                     "Failed: ~a~%Expected: ~a~%Computed: ~a~%"
-                     'tested-expression expected produced)))))))
+;; Antiunification tests
+
+(test-check 'antiunify-check-ok-1
+  (run* (q)
+    (fresh (x y)
+      (<= `(,x ,y) q)
+      (<= x 17)
+      (<= y x)
+      (<= x 83)))
+  '((_.0 _.1)))
+
+(test-check 'antiunify-check-ok-2
+  (run* (q)
+    (fresh (x y)
+      (<= `(,x ,y) q)
+      (<= y x)
+      (<= x 17)
+      (<= x 83)))
+  '((_.0 _.1)))
+
+(test-check 'antiunify-check-ok-3
+  (run* (q)
+    (fresh (x y)
+      (<= `(,x ,y) q)
+      (<= x 17)
+      (<= x 83)
+      (<= y x)))
+  '((_.0 _.1)))
+
+(test-check 'antiunify-check-ok-4
+  (run* (q)
+    (fresh (x y)
+      (<= `(,x ,y) q)
+      (<= x '(f 1))
+      (<= x '(f 2))
+      (<= `(f ,y) x)))
+  '((_.0 _.1)))
+
+(test-check 'antiunify-check-ok-5
+  (run* (q)
+    (fresh (x y)
+      (<= `(,x ,y) q)
+      (<= x '(f 1))
+      (<= x '(f 2))
+      (<= y x)))
+  '((_.0 _.1)))
+
+(test-check 'antiunify-check-fail-1
+  (run* (x)
+    (<= x 17)
+    (<= x 83)
+    (<= 41 x))
+  '())
+
+(test-check 'antiunify-check-fail-2
+  (run* (x)
+    (<= x 17)
+    (<= 41 x)
+    (<= x 83))
+  '())
+
+(test-check 'antiunify-check-fail-3
+  (run* (x)
+    (<= 41 x)
+    (<= x 17)
+    (<= x 83))
+  '())
+
+(test-check 'antiunify-check-fail-4
+  (run* (x)
+    (<= x '(f 1))
+    (<= x '(f 2))
+    (<= 3 x))
+  '())
+
+(test-check 'antiunify-check-fail-5
+  (run* (x)
+    (<= x '(f 1))
+    (<= x '(f 2))
+    (<= '(f 4) x))
+  '())
+
+;; Other tests
 
 (test-check 'trivial-conjunction
   (run* (q)
@@ -77,18 +150,18 @@
       (<= y z)))
   '((2 2 2 2)))
 
-(test-check 'R-acyclicity-failure-1
-  (run* (q)
-    (fresh (x y z)
-      (== q `(,x ,y ,z))
-      (<= y z)
-      (<= `(f ,x ,x) `(f ,y (f ,z ,z)))))
-  '())
+;(test-check 'R-acyclicity-failure-1
+;  (run* (q)
+;    (fresh (x y z)
+;      (== q `(,x ,y ,z))
+;      (<= y z)
+;      (<= `(f ,x ,x) `(f ,y (f ,z ,z)))))
+;  '())
 
-(test-check 'R-acyclicity-failure-2
-  (run* (q)
-    (fresh (x y z)
-      (== q `(,x ,y ,z))
-      (<= `(f ,x ,x) `(f ,y (f ,z ,z)))
-      (<= y z)))
-  '())
+;(test-check 'R-acyclicity-failure-2
+;  (run* (q)
+;    (fresh (x y z)
+;      (== q `(,x ,y ,z))
+;      (<= `(f ,x ,x) `(f ,y (f ,z ,z)))
+;      (<= y z)))
+;  '())
