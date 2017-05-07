@@ -59,7 +59,7 @@
     (walk* v (reify-s v '()))))
 
 (define (walk* v s)
-  (let ((v (walk v s #f)))
+  (let ((v (walk v s)))
     (cond
       ((var? v) v)
       ((pair? v) (cons (walk* (car v) s)
@@ -67,7 +67,7 @@
       (else  v))))
 
 (define (reify-s v s)
-  (let ((v (walk v s #f)))
+  (let ((v (walk v s)))
     (cond
       ((var? v)
        (let  ((n (reify-name (length s))))
