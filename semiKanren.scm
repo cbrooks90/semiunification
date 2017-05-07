@@ -55,6 +55,17 @@
         (let ((x (vector 'x)))
           (values x (ext-s (cons u v) x a-s)))))))
 
+(define (freshen t s)
+  (let ((t (walk t s)))
+    (cond
+      ((var? t)
+       (let ((li (vector->list t)))
+         (list->vector (cons (car li) li))))
+      ((pair? t)
+       (cons (freshen (car t) s)
+             (freshen (cdr t) s)))
+      (else  t))))
+
 (define (semiunify l r s extern local)
   (let-values
     (((l l-extern) (semiwalk l (append s local) extern #f))
@@ -69,7 +80,7 @@
                       (values #f #f))))
       ((and (var? l) (var? r) (var=? l r)) (values s local))
       ((var? l) (values s (ext-s l r local)))
-      ((var? r) (values (ext-s r l s) local))
+      ((var? r) (values (ext-s r (freshen l (append s local)) s) local))
       ((and (pair? l) (pair? r))
        (let-values (((s local) (semiunify (car l) (car r) s extern local)))
          (if s (semiunify (cdr l) (cdr r) s extern local) (values #f #f))))
