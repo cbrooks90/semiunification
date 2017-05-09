@@ -17,13 +17,6 @@
   (let ((pr (and (var? u) (assp (lambda (v) (var=? u v)) s))))
     (if pr (walk (cdr pr) s) u)))
 
-(define (semiwalk t s extern extern?)
-  (cond [(assp (lambda (v) (var=? t v)) s)
-         => (lambda (x) (semiwalk (cdr x) s extern extern?))]
-        [(assp (lambda (v) (var=? t v)) extern)
-         => (lambda (x) (semiwalk (cdr x) s extern t))]
-        [else (values t extern?)]))
-
 ;(define (occurs x v s)
 ;  (let ((v (walk v s #f)))
 ;    (cond ((and (var? v) (eq? v x)))
@@ -75,19 +68,27 @@
              (freshen (cdr t) s eqn)))
       (else  t))))
 
-(define (semiunify l r s extern local eqn)
+;(l-extern
+;        (let-values (((t _) (antiunify l r (append s local extern) '())))
+;          (values s (ext-s l-extern t local))))
+;      (r-extern (let-values (((new ls) (semiunify l r s extern local eqn)))
+;                  (if (eq? new s)
+;                      (values (ext-s r-extern (freshen l (append s local) eqn) s)
+;                              (append ls local))
+;                      (values #f #f))))
+
+(define (semiwalk t s local local?)
+  (cond [(assp (lambda (v) (var=? t v)) s)
+         => (lambda (x) (semiwalk (cdr x) s local local?))]
+        [(assp (lambda (v) (var=? t v)) local)
+         => (lambda (x) (semiwalk (cdr x) s local #t))]
+        [else (values t local?)]))
+
+(define (semiunify l r s local eqn)
   (let-values
-    (((l l-extern) (semiwalk l (append s local) extern #f))
-     ((r r-extern) (semiwalk r (append s local) extern #f)))
+    (((l local-l?) (semiwalk l s local #f))
+     ((r local-r?) (semiwalk r s local #f)))
     (cond
-      (l-extern
-        (let-values (((t _) (antiunify l r (append s local extern) '())))
-          (values s (ext-s l-extern t local))))
-      (r-extern (let-values (((new ls) (semiunify l r s extern local eqn)))
-                  (if (eq? new s)
-                      (values (ext-s r-extern (freshen l (append s local) eqn) s)
-                              (append ls local))
-                      (values #f #f))))
       ((and (var? l) (var? r) (var=? l r)) (values s local))
       ((var? l) (values s (ext-s l r local)))
       ((var? r) (values (ext-s r (freshen l (append s local) eqn) s) local))
