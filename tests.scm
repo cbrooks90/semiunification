@@ -3,7 +3,40 @@
 
 ;; Antiunification tests
 
-(test-check 'antiunify-check-ok-1
+(test-check 'local-antiunify-1
+  (run* (x)
+    (fresh (y z)
+      (<= x 1)
+      (<= x 2)
+      (<= `(f ,x ,x) `(f (f 3 4) (f ,y ,z)))))
+  ?)
+
+(test-check 'local-antiunify-2
+  (run* (x)
+    (fresh (y z)
+      (<= x 1)
+      (<= x 2)
+      (<= `(f (f 3 4) (f ,y ,z)) `(f ,x ,x))))
+  ?)
+
+(test-check 'local-antiunify-3
+  (run* (x)
+    (fresh (y z)
+      (<= x 1)
+      (<= x 2)
+      (<= `(f ,x (f ,y ,z)) `(f (f 3 4) ,x))))
+  ?)
+
+(test-check 'local-antiunify-4
+  (run* (q)
+    (fresh (x y z w)
+      (== q `(,x ,y ,z ,w))
+      (<= x 1)
+      (<= x 2)
+      (<= `(f ,w ,x ,x) `(f ,y (f 3 4) (f ,z ,w)))))
+  ?)
+
+(test-check 'antiunify-1
   (run* (q)
     (fresh (x y)
       (<= `(,x ,y) q)
@@ -12,7 +45,7 @@
       (<= x 83)))
   '((_.0 _.1)))
 
-(test-check 'antiunify-check-ok-2
+(test-check 'antiunify-2
   (run* (q)
     (fresh (x y)
       (<= `(,x ,y) q)
@@ -21,7 +54,7 @@
       (<= x 83)))
   '((_.0 _.1)))
 
-(test-check 'antiunify-check-ok-3
+(test-check 'antiunify-3
   (run* (q)
     (fresh (x y)
       (<= `(,x ,y) q)
@@ -30,7 +63,7 @@
       (<= y x)))
   '((_.0 _.1)))
 
-(test-check 'antiunify-check-ok-4
+(test-check 'antiunify-4
   (run* (q)
     (fresh (x y)
       (<= `(,x ,y) q)
@@ -39,7 +72,7 @@
       (<= `(f ,y) x)))
   '((_.0 _.1)))
 
-(test-check 'antiunify-check-ok-5
+(test-check 'antiunify-5
   (run* (q)
     (fresh (x y)
       (<= `(,x ,y) q)
@@ -48,35 +81,35 @@
       (<= y x)))
   '((_.0 _.1)))
 
-(test-check 'antiunify-check-fail-1
+(test-check 'antiunify-fail-1
   (run* (x)
     (<= x 17)
     (<= x 83)
     (<= 41 x))
   '())
 
-(test-check 'antiunify-check-fail-2
+(test-check 'antiunify-fail-2
   (run* (x)
     (<= x 17)
     (<= 41 x)
     (<= x 83))
   '())
 
-(test-check 'antiunify-check-fail-3
+(test-check 'antiunify-fail-3
   (run* (x)
     (<= 41 x)
     (<= x 17)
     (<= x 83))
   '())
 
-(test-check 'antiunify-check-fail-4
+(test-check 'antiunify-fail-4
   (run* (x)
     (<= x '(f 1))
     (<= x '(f 2))
     (<= 3 x))
   '())
 
-(test-check 'antiunify-check-fail-5
+(test-check 'antiunify-fail-5
   (run* (x)
     (<= x '(f 1))
     (<= x '(f 2))
