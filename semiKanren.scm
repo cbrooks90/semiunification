@@ -34,22 +34,22 @@
          => (lambda (x) (semiwalk (cdr x) s aux t))]
         [else (values t last)]))
 
-;(l-extern
-;        (let-values (((t _) (antiunify l r (append s local extern) '())))
-;          (values s (ext-s l-extern t local))))
-;      (r-extern (let-values (((new ls) (semiunify l r s extern local eqn)))
-;                  (if (eq? new s)
-;                      (values (ext-s r-extern (freshen l (append s local) eqn) s)
-;                              (append ls local))
-;                      (values #f #f))))
-
 (define (<= u v)
   (lambda (s/c)
     (let*-values (((s ext eqn) (values (subst s/c) (ext-vars s/c) (eq-no s/c)))
                   ((u u-extern) (semiwalk u s ext #f))
                   ((v v-extern) (semiwalk v s ext #f))
                   ((global local) (semiunify u v s '() eqn))
-                  ((global local) (antiunify ? ?)))
+                  ((global local)
+                   (cond (u-extern
+                           (let-values (((t _) (antiunify u v (append global local ext) '())))
+                             (values global (ext-s u-extern t local))))
+                         (v-extern
+                           (let-values (((new ls) (semiunify u v global local eqn))); local here?
+                             (if (eq? new global)
+                                 (values (ext-s r-extern (freshen u (append s local) eqn) global)
+                                         (append ls local))
+                                 (values #f #f)))))))
       (if global (unit (state global (append local ext) (var-no s/c) (+ eqn 1))) mzero))))
 
 (define (== u v)
