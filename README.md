@@ -1,8 +1,10 @@
 # semiKanren
 
-Semiunification is an undecidable problem. However, so-called "R-acyclic" semiunification problems can be solved. Here I've attempted a version of miniKanren which uses semiunification.
+Semiunification constraints are very natural in that they directly encode relations in the so-called "subsumption lattice" on terms. I'm devising an algorithm which uses this idea heavily and is purely functional.
 
-The primary goal is to write a relational type inferencer which should aid the program synthesis work of William E. Byrd, Greg Rosenblatt and others. This should be possible since certain type inference problems with let-polymorphism can be translated in a syntax-directed way into a (slight variant of an) R-ASUP instance.
+It should be noted that semiunification is an undecidable problem. However, a condition called "R-acyclicity" guarantees an instance's solvability. Here I've attempted a version of miniKanren which uses semiunification as a goal constructor, using my algorithm to solve semiunification problems provided they are R-acyclic.
+
+The long-term goal is to write a relational type inferencer which should aid the program synthesis work of William E. Byrd, Greg Rosenblatt and others. This should be possible since certain type inference problems with let-polymorphism can be translated in a syntax-directed way into a (slight variant of an) R-ASUP instance. Further reading has suggested that subtyping via semiunification constraints is also possible.
 
 ## References
 
