@@ -49,7 +49,8 @@
                              (if (eq? new global)
                                  (values (ext-s r-extern (freshen u (append s local) eqn) global)
                                          (append ls local))
-                                 (values #f #f)))))))
+                                 (values #f #f))))
+                         (else (values global local)))))
       (if global (unit (state global (append local ext) (var-no s/c) (+ eqn 1))) mzero))))
 
 (define (== u v)
@@ -61,6 +62,7 @@
 (define mzero '())
 
 (define (antiunify u v s a-s)
+              (write a-s)(newline)
   (let ((u (walk u s)) (v (walk v s)))
     (cond
       ((and (pair? u) (pair? v))
