@@ -52,18 +52,17 @@
                                          (append ls local))
                                  (values #f #f))))
                          (else (values global local)))))
-      (printf "~a\n" (state global (append local ext) (var-no s/c) (+ eqn 1)))
       (if global (unit (state global (append local ext) (var-no s/c) (+ eqn 1))) mzero))))
 
 (define (== u v)
   (lambda (s/c)
-    (let ((s (unify u v (subst s/c))))
+    (let ((s (unify u v (subst s/c) '())))
       (if s (unit (state s (ext-vars s/c) (var-no s/c) (eq-no s/c))) mzero))))
 
 (define (unit s/c) (cons s/c mzero))
 (define mzero '())
 
-(trace-define (antiunify u v s a-s)
+(define (antiunify u v s a-s)
               (write a-s)(newline)
   (let ((u (walk u s)) (v (walk v s)))
     (cond
@@ -89,13 +88,13 @@
              (freshen (cdr t) s eqn)))
       (else  t))))
 
-(trace-define (semiunify l r s local eqn)
+(define (semiunify l r s local eqn)
   (let-values
     (((l local-l?) (semiwalk l s local #f))
      ((r local-r?) (semiwalk r s local #f)))
     (cond
       ((and (var? l) (var? r) (var=? l r)) (values s local))
-      (local-l? (values (unify l r (append s local)) local))
+      (local-l? (values (unify l r s local) local))
       ((var? l) (values s (ext-s l r local)))
       ((var? r) (values (ext-s r (freshen l (append s local) eqn) s) local))
       ((and (pair? l) (pair? r))
@@ -104,15 +103,15 @@
       ((equal? l r) (values s local))
       (else (values #f #f)))))
 
-(trace-define (unify u v s)
-  (let ((u (walk u s)) (v (walk v s)))
+(define (unify u v s local)
+  (let ((u (walk u (append s local))) (v (walk v (append s local))))
     (cond
       ((and (var? u) (var? v) (var=? u v)) s)
       ((var? u) (ext-s u v s))
       ((var? v) (ext-s v u s))
       ((and (pair? u) (pair? v))
-       (let ((s (unify (car u) (car v) s)))
-         (and s (unify (cdr u) (cdr v) s))))
+       (let ((s (unify (car u) (car v) s local)))
+         (and s (unify (cdr u) (cdr v) s local))))
       ((equal? u v) s)
       (else #f))))
 
