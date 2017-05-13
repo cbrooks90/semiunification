@@ -37,9 +37,10 @@
 (define (<= u v)
   (lambda (s/c)
     (let*-values (((s ext eqn) (values (subst s/c) (ext-vars s/c) (eq-no s/c)))
+                  ((u) (walk u s)) ((v) (walk v s))
+                  ((global local) (semiunify u v s '() eqn))
                   ((u u-extern) (semiwalk u s ext #f))
                   ((v v-extern) (semiwalk v s ext #f))
-                  ((global local) (semiunify u v s '() eqn))
                   ((global local)
                    (cond (u-extern
                            (let-values (((t _) (antiunify u v (append global local ext) '())))
@@ -51,6 +52,7 @@
                                          (append ls local))
                                  (values #f #f))))
                          (else (values global local)))))
+      (printf "~a\n" (state global (append local ext) (var-no s/c) (+ eqn 1)))
       (if global (unit (state global (append local ext) (var-no s/c) (+ eqn 1))) mzero))))
 
 (define (== u v)
@@ -61,7 +63,7 @@
 (define (unit s/c) (cons s/c mzero))
 (define mzero '())
 
-(define (antiunify u v s a-s)
+(trace-define (antiunify u v s a-s)
               (write a-s)(newline)
   (let ((u (walk u s)) (v (walk v s)))
     (cond
@@ -87,7 +89,7 @@
              (freshen (cdr t) s eqn)))
       (else  t))))
 
-(define (semiunify l r s local eqn)
+(trace-define (semiunify l r s local eqn)
   (let-values
     (((l local-l?) (semiwalk l s local #f))
      ((r local-r?) (semiwalk r s local #f)))
@@ -97,12 +99,12 @@
       ((var? l) (values s (ext-s l r local)))
       ((var? r) (values (ext-s r (freshen l (append s local) eqn) s) local))
       ((and (pair? l) (pair? r))
-       (let-values (((s local) (semiunify (car l) (car r) s extern local eqn)))
-         (if s (semiunify (cdr l) (cdr r) s extern local eqn) (values #f #f))))
+       (let-values (((s local) (semiunify (car l) (car r) s local eqn)))
+         (if s (semiunify (cdr l) (cdr r) s local eqn) (values #f #f))))
       ((equal? l r) (values s local))
       (else (values #f #f)))))
 
-(define (unify u v s)
+(trace-define (unify u v s)
   (let ((u (walk u s)) (v (walk v s)))
     (cond
       ((and (var? u) (var? v) (var=? u v)) s)
