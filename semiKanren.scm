@@ -63,7 +63,6 @@
 (define mzero '())
 
 (define (antiunify u v s a-s)
-              (write a-s)(newline)
   (let ((u (walk u s)) (v (walk v s)))
     (cond
       ((and (pair? u) (pair? v))

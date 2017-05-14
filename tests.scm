@@ -4,28 +4,31 @@
 ;; Antiunification tests
 
 (test-check 'local-antiunify-1
-  (run* (x)
-    (fresh (y z)
+  (run* (q)
+    (fresh (x y z)
+      (== q `(,x ,y ,z))
       (<= x 1)
       (<= x 2)
       (<= `(f ,x ,x) `(f (f 3 4) (f ,y ,z)))))
-  ?)
+  '((_.0 3 4)))
 
 (test-check 'local-antiunify-2
-  (run* (x)
-    (fresh (y z)
+  (run* (q)
+    (fresh (x y z)
+      (== q `(,x ,y ,z))
       (<= x 1)
       (<= x 2)
       (<= `(f (f 3 4) (f ,y ,z)) `(f ,x ,x))))
-  ?)
+  '(((f 3 4) _.0 _.1)))
 
 (test-check 'local-antiunify-3
-  (run* (x)
-    (fresh (y z)
+  (run* (q)
+    (fresh (x y z)
+      (== q `(,x ,y ,z))
       (<= x 1)
       (<= x 2)
       (<= `(f ,x (f ,y ,z)) `(f (f 3 4) ,x))))
-  ?)
+  'idk)
 
 (test-check 'local-antiunify-4
   (run* (q)
@@ -34,7 +37,7 @@
       (<= x 1)
       (<= x 2)
       (<= `(f ,w ,x ,x) `(f ,y (f 3 4) (f ,z ,w)))))
-  ?)
+  'idk)
 
 (test-check 'antiunify-1
   (run* (q)
@@ -133,6 +136,13 @@
       (== q `(,x ,y))
       (<= `(,y . ,y) x)))
   '(((_.0 . _.0) _.1)))
+
+(test-check 'local-vs-nonlocal
+  (run* (q)
+    (fresh (x y z)
+      (== q `(,x ,y ,z))
+      (<= `(f ,x (f ,y ,z)) `(f (g 3 4) ,x))))
+  '())
 
 (test-check 'right-structure-bound-1
   (run* (q)
