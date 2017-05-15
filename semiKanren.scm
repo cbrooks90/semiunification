@@ -90,7 +90,7 @@
 (define (semiunify l r s local eqn)
   (let-values
     (((l local-l?) (semiwalk l s local #f))
-     ((r local-r?) (semiwalk r s local #f)))
+     ((r) (walk r s)))
     (cond
       ((and (var? l) (var? r) (var=? l r)) (values s local))
       (local-l? (values (unify l r s local) local))
