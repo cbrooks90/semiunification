@@ -28,11 +28,12 @@
   (cons `(,x . ,v) s))
 
 (define (semiwalk t s aux last)
-  (cond [(assp (lambda (v) (var=? t v)) s)
-         => (lambda (x) (semiwalk (cdr x) s aux last))]
-        [(assp (lambda (v) (var=? t v)) aux)
-         => (lambda (x) (semiwalk (cdr x) s aux t))]
-        [else (values t last)]))
+  (cond
+    ((assp (lambda (v) (var=? t v)) s)
+     => (lambda (x) (semiwalk (cdr x) s aux last)))
+    ((assp (lambda (v) (var=? t v)) aux)
+     => (lambda (x) (semiwalk (cdr x) s aux t)))
+    (else (values t last))))
 
 (define (<= u v)
   (lambda (s/c)
