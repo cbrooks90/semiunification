@@ -28,16 +28,7 @@
       (<= x 1)
       (<= x 2)
       (<= `(f ,x (f ,y ,z)) `(f (f 3 4) ,x))))
-  'idk)
-
-(test-check 'local-antiunify-4
-  (run* (q)
-    (fresh (x y z w)
-      (== q `(,x ,y ,z ,w))
-      (<= x 1)
-      (<= x 2)
-      (<= `(f ,w ,x ,x) `(f ,y (f 3 4) (f ,z ,w)))))
-  'idk)
+  '(((f _.0 _.1) _.2 _.3)))
 
 (test-check 'antiunify-1
   (run* (q)
@@ -83,6 +74,13 @@
       (<= x '(f 2))
       (<= y x)))
   '((_.0 _.1)))
+
+(test-check 'antiunify-6
+  (run* (q)
+    (fresh (x y z w)
+      (== q `(,x ,y ,z ,w))
+      (<= `(f ,w ,x ,x) `(f ,y (f 3 4) (f ,z ,w)))))
+  'idk)
 
 (test-check 'antiunify-fail-1
   (run* (x)
