@@ -46,9 +46,9 @@
                            (let-values (((t _) (antiunify u v (append global local ext) '())))
                              (values global (ext-s u-extern t local))))
                          (v-extern
-                           (let-values (((new ls) (semiunify u v global local eqn))); local here?
+                           (let-values (((new ls) (semiunify u v global '() eqn)))
                              (if (eq? new global)
-                                 (values (ext-s r-extern (freshen u (append s local) eqn) global)
+                                 (values (ext-s v-extern (freshen u (append s local) eqn) global)
                                          (append ls local))
                                  (values #f #f))))
                          (else (values global local)))))
