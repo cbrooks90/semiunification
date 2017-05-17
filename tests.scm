@@ -75,13 +75,6 @@
       (<= y x)))
   '((_.0 _.1)))
 
-(test-check 'antiunify-6
-  (run* (q)
-    (fresh (x y z w)
-      (== q `(,x ,y ,z ,w))
-      (<= `(f ,w ,x ,x) `(f ,y (f 3 4) (f ,z ,w)))))
-  'idk)
-
 (test-check 'antiunify-fail-1
   (run* (x)
     (<= x 17)
@@ -134,6 +127,27 @@
       (== q `(,x ,y))
       (<= `(,y . ,y) x)))
   '(((_.0 . _.0) _.1)))
+
+(test-check 'indirect-unify-1
+  (run* (q)
+    (fresh (x y z w)
+      (== q `(,x ,y ,z ,w))
+      (<= `(f ,w ,x ,x) `(f ,y (f 3 4) (f ,z ,w)))))
+  'idk)
+
+(test-check 'indirect-unify-2
+  (run* (q)
+    (fresh (x y z w)
+      (== q `(,x ,y ,z ,w))
+      (<= `(f ,w ,x ,x) `(f ,y (f 3 4) (f ,z ,y)))))
+  'idk)
+
+(test-check 'local-chain
+  (run* (q)
+    (fresh (x y z w)
+      (== q `(,x ,y ,z ,w))
+      (<= `(f ,a ,b ,c ,d ,e ,f ,g 2) `(f ,b ,c ,d ,e ,f ,g ,h ,d))))
+  'idk)
 
 (test-check 'local-vs-nonlocal
   (run* (q)
