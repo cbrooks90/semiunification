@@ -133,14 +133,14 @@
     (fresh (x y z w)
       (== q `(,x ,y ,z ,w))
       (<= `(f ,w ,x ,x) `(f ,y (f 3 4) (f ,z ,w)))))
-  'idk)
+  '((_.0 4 3 4)))
 
 (test-check 'indirect-unify-2
   (run* (q)
     (fresh (x y z w)
       (== q `(,x ,y ,z ,w))
       (<= `(f ,w ,x ,x) `(f ,y (f 3 4) (f ,z ,y)))))
-  'idk)
+  '((_.0 4 3 _.1)))
 
 (test-check 'local-chain
   (run* (q)
