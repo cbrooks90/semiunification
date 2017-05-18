@@ -144,10 +144,10 @@
 
 (test-check 'local-chain
   (run* (q)
-    (fresh (x y z w)
-      (== q `(,x ,y ,z ,w))
-      (<= `(f ,a ,b ,c ,d ,e ,f ,g 2) `(f ,b ,c ,d ,e ,f ,g ,h ,d))))
-  'idk)
+    (fresh (a b c d e f g h)
+      (== q `(,a ,b ,c ,d ,e ,f ,g ,h))
+      (<= `(f ,a ,b ,c ,d ,e ,f ,g 9) `(f ,b ,c ,d ,e ,f ,g ,h ,d))))
+  '((_.0 _.1 _.2 9 9 9 9 9)))
 
 (test-check 'local-vs-nonlocal
   (run* (q)
