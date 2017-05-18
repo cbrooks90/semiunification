@@ -33,7 +33,7 @@
 (test-check 'antiunify-1
   (run* (q)
     (fresh (x y)
-      (<= `(,x ,y) q)
+      (== q `(,x ,y))
       (<= x 17)
       (<= y x)
       (<= x 83)))
@@ -42,7 +42,7 @@
 (test-check 'antiunify-2
   (run* (q)
     (fresh (x y)
-      (<= `(,x ,y) q)
+      (== q `(,x ,y))
       (<= y x)
       (<= x 17)
       (<= x 83)))
@@ -51,7 +51,7 @@
 (test-check 'antiunify-3
   (run* (q)
     (fresh (x y)
-      (<= `(,x ,y) q)
+      (== q `(,x ,y))
       (<= x 17)
       (<= x 83)
       (<= y x)))
@@ -60,16 +60,16 @@
 (test-check 'antiunify-4
   (run* (q)
     (fresh (x y)
-      (<= `(,x ,y) q)
+      (== q `(,x ,y))
       (<= x '(f 1))
       (<= x '(f 2))
       (<= `(f ,y) x)))
-  '((_.0 _.1)))
+  '(((f _.0) _.1)))
 
 (test-check 'antiunify-5
   (run* (q)
     (fresh (x y)
-      (<= `(,x ,y) q)
+      (== q `(,x ,y))
       (<= x '(f 1))
       (<= x '(f 2))
       (<= y x)))

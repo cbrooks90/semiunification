@@ -39,7 +39,7 @@
   (lambda (s/c)
     (let*-values (((s ext eqn) (values (subst s/c) (ext-vars s/c) (eq-no s/c)))
                   ((u) (walk u s)) ((v) (walk v s))
-                  ((global local) (semiunify u v s '() eqn))
+                  ((global local) (semiunify u v s '() eqn #f))
                   ((u u-extern) (semiwalk u s ext #f))
                   ((v v-extern) (semiwalk v s ext #f))
                   ((global local)
@@ -47,7 +47,7 @@
                            (let-values (((t _) (antiunify u v (append global local ext) '())))
                              (values global (ext-s u-extern t local))))
                          (v-extern
-                           (let-values (((new ls) (semiunify u v global '() eqn)))
+                           (let-values (((new ls) (semiunify u v global '() eqn #t)))
                              (if (eq? new global)
                                  (values (ext-s v-extern (freshen u (append s local) eqn) global)
                                          (append ls local))
@@ -88,18 +88,19 @@
              (freshen (cdr t) s eqn)))
       (else  t))))
 
-(define (semiunify l r s local eqn)
+(define (semiunify l r s local eqn test?)
   (let-values
     (((l local-l?) (semiwalk l s local #f))
      ((r) (walk r s)))
     (cond
       ((and (var? l) (var? r) (var=? l r)) (values s local))
       (local-l? (values (unify l r s local) local))
-      ((var? l) (values s (ext-s l r local)))
+      ((and (var? l) (var? r) test?) (values s local))
       ((var? r) (values (ext-s r (freshen l (append s local) eqn) s) local))
+      ((var? l) (values s (ext-s l r local)))
       ((and (pair? l) (pair? r))
-       (let-values (((s local) (semiunify (car l) (car r) s local eqn)))
-         (if s (semiunify (cdr l) (cdr r) s local eqn) (values #f #f))))
+       (let-values (((s local) (semiunify (car l) (car r) s local eqn test?)))
+         (if s (semiunify (cdr l) (cdr r) s local eqn test?) (values #f #f))))
       ((equal? l r) (values s local))
       (else (values #f #f)))))
 
