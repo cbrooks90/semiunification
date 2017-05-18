@@ -57,7 +57,7 @@
 
 (define (== u v)
   (lambda (s/c)
-    (let ((s (unify u v (subst s/c) '())))
+    (let ((s (unify u v (subst s/c) '() #f)))
       (if s (unit (state s (ext-vars s/c) (var-no s/c) (eq-no s/c))) mzero))))
 
 (define (unit s/c) (cons s/c mzero))
@@ -94,7 +94,7 @@
      ((r) (walk r s)))
     (cond
       ((and (var? l) (var? r) (var=? l r)) (values s local))
-      (local-l? (values (unify l r s local) local))
+      (local-l? (values (unify l r s local eqn) local))
       ((and (var? l) (var? r) test?) (values s local))
       ((var? r) (values (ext-s r (freshen l (append s local) eqn) s) local))
       ((var? l) (values s (ext-s l r local)))
@@ -104,15 +104,15 @@
       ((equal? l r) (values s local))
       (else (values #f #f)))))
 
-(define (unify u v s local)
+(define (unify u v s local eqn)
   (let ((u (walk u (append s local))) (v (walk v (append s local))))
     (cond
       ((and (var? u) (var? v) (var=? u v)) s)
       ((var? u) (ext-s u v s))
-      ((var? v) (ext-s v u s))
+      ((var? v) (ext-s v u (if eqn (ext-s (freshen v '() eqn) u s) s)))
       ((and (pair? u) (pair? v))
-       (let ((s (unify (car u) (car v) s local)))
-         (and s (unify (cdr u) (cdr v) s local))))
+       (let ((s (unify (car u) (car v) s local eqn)))
+         (and s (unify (cdr u) (cdr v) s local eqn))))
       ((equal? u v) s)
       (else #f))))
 
