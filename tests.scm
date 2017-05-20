@@ -75,6 +75,15 @@
       (<= y x)))
   '((_.0 _.1)))
 
+(test-check 'antiunify-6
+  (run* (q)
+    (fresh (x y)
+      (== q `(,x ,y))
+      (<= `(f ,x) '(f 1))
+      (<= `(f ,x) '(f 2))
+      (<= y x)))
+  '((_.0 _.1)))
+
 (test-check 'antiunify-fail-1
   (run* (x)
     (<= x 17)
@@ -108,6 +117,20 @@
     (<= x '(f 1))
     (<= x '(f 2))
     (<= '(f 4) x))
+  '())
+
+(test-check 'antiunify-fail-6
+  (run* (x)
+    (<= `(f ,x) '(f 1))
+    (<= `(f ,x) '(f 2))
+    (<= 4 x))
+  '())
+
+(test-check 'antiunify-fail-7
+  (run* (x)
+    (<= `(f ,x) '(f 1))
+    (<= `(g ,x) '(g 2))
+    (<= 2 x))
   '())
 
 ;; Other tests
