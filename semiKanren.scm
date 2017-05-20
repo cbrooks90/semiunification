@@ -13,9 +13,19 @@
 (define var-no caddr)
 (define eq-no cdddr)
 
+(define (resolves-to? u v)
+  (let loop ((u (vector->list u)) (v (vector->list v)))
+    (cond ((null? v) #t)
+          ((null? u) #f)
+          ((equal? (car u) (car v)) (loop (cdr u) (cdr v)))
+          (else #f))))
+
+(define (gen-walk u s proc)
+  (let ((pr (and (var? u) (assp (lambda (v) (proc u v)) s))))
+    (if pr (gen-walk (cdr pr) s proc) u)))
+
 (define (walk u s)
-  (let ((pr (and (var? u) (assp (lambda (v) (var=? u v)) s))))
-    (if pr (walk (cdr pr) s) u)))
+  (gen-walk u s resolves-to?))
 
 ;(define (occurs x v s)
 ;  (let ((v (walk v s #f)))
@@ -86,7 +96,7 @@
       ((pair? t)
        (cons (freshen (car t) s eqn)
              (freshen (cdr t) s eqn)))
-      (else  t))))
+      (else t))))
 
 (define (semiunify l r s local eqn test?)
   (let-values

@@ -55,19 +55,19 @@
       (if (null? $) '() (cons (car $) (take (- n 1) (cdr $)))))))
 
 (define (reify-1st s/c)
-  (let ((v (walk* (var 0) (subst s/c))))
-    (walk* v (reify-s v '()))))
+  (let ((v (walk* (var 0) (subst s/c) resolves-to?)))
+    (walk* v (reify-s v '()) var=?)))
 
-(define (walk* v s)
-  (let ((v (walk v s)))
+(define (walk* v s proc)
+  (let ((v (gen-walk v s proc)))
     (cond
       ((var? v) v)
-      ((pair? v) (cons (walk* (car v) s)
-                   (walk* (cdr v) s)))
-      (else  v))))
+      ((pair? v) (cons (walk* (car v) s proc)
+                   (walk* (cdr v) s proc)))
+      (else v))))
 
 (define (reify-s v s)
-  (let ((v (walk v s)))
+  (let ((v (gen-walk v s var=?)))
     (cond
       ((var? v)
        (let  ((n (reify-name (length s))))
