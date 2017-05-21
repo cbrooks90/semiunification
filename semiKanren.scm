@@ -39,9 +39,10 @@
 
 (define (<= u v)
   (lambda (s/c)
-    (let-values (((global local) (semiunify u v (subst s/c) '() (ext-vars s/c) (eq-no s/c) #f)))
+    (let-values (((global local ext)
+                  (semiunify u v (subst s/c) '() (ext-vars s/c) (eq-no s/c) #f)))
       (if global
-          (unit (state global (append local (ext-vars s/c)) (var-no s/c) (+ (eq-no s/c) 1)))
+          (unit (state global (append ext local) (var-no s/c) (+ (eq-no s/c) 1)))
           mzero))))
 
 (define (== u v)
@@ -84,15 +85,15 @@
          (r (walk r s)))
     (cond
       ((and (var? l) (var? r) (var=? l r)) (post l r s local ext eqn))
-      (local-l? (post l r (unify l r s local eqn) local ext eqn))
+      (local-l? (post local-l r (unify local-l r s local eqn) local ext eqn))
       ((and (var? l) (var? r) test?) (post l r s local ext eqn))
       ((var? r) (post l r (ext-s r (freshen l (append s local) eqn) s) local ext eqn))
       ((var? l) (post l r s (ext-s l r local) ext eqn))
       ((and (pair? l) (pair? r))
-       (let-values (((s local) (semiunify (car l) (car r) s local ext eqn test?)))
-         (if s (semiunify (cdr l) (cdr r) s local ext eqn test?) (values #f '()))))
+       (let-values (((s local ext) (semiunify (car l) (car r) s local ext eqn test?)))
+         (if s (semiunify (cdr l) (cdr r) s local ext eqn test?) (values #f '() '()))))
       ((equal? l r) (post l r s local ext eqn))
-      (else (values #f '())))))
+      (else (values #f '() '())))))
 
 (define (post l r s local ext eqn)
   (let* ((l~ (walk l ext))
@@ -100,15 +101,15 @@
     (cond
       ((not (eq? l l~))
        (let-values (((t _) (antiunify l~ r~ (append s local ext) '())))
-         (values s (ext-s l t local))))
+         (values s local (ext-s l t ext))))
       ((not (eq? r r~))
-       (let-values (((new ls) (semiunify l~ r~ s '() '() eqn #t)))
+       (let-values (((new ls ext) (semiunify l~ r~ s '() '() eqn #t)))
          ; I think this is too much. Need to check that antiunification vars are not bound
          (if (eq? new s)
              (values (ext-s r (freshen l~ (append s local) eqn) s)
-                     (append ls local))
-             (values #f '()))))
-      (else (values s local)))))
+                     (append ls local) ext)
+             (values #f '() '()))))
+      (else (values s local ext)))))
 
 (define (unify u v s local eqn)
   (let ((u (walk u (append s local))) (v (walk v (append s local))))
