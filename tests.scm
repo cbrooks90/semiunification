@@ -19,7 +19,7 @@
       (<= x 1)
       (<= x 2)
       (<= `(f (f 3 4) (f ,y ,z)) `(f ,x ,x))))
-  '(((f 3 4) _.0 _.1)))
+  '())
 
 (test-check 'local-antiunify-3
   (run* (q)
@@ -28,7 +28,7 @@
       (<= x 1)
       (<= x 2)
       (<= `(f ,x (f ,y ,z)) `(f (f 3 4) ,x))))
-  '(((f _.0 _.1) _.2 _.3)))
+  '())
 
 (test-check 'antiunify-1
   (run* (q)
