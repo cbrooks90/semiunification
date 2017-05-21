@@ -172,12 +172,41 @@
       (<= `(f ,a ,b ,c ,d ,e ,f ,g 9) `(f ,b ,c ,d ,e ,f ,g ,h ,d))))
   '((_.0 _.1 _.2 9 9 9 9 9)))
 
-(test-check 'local-vs-nonlocal
+(test-check 'local-vs-nonlocal-separate
   (run* (q)
     (fresh (x y z)
       (== q `(,x ,y ,z))
-      (<= `(f ,x (f ,y ,z)) `(f (g 3 4) ,x))))
+      (<= x '(g 3 4))
+      (<= `(f 3 4) x)))
   '())
+
+(test-check 'local-vs-nonlocal-together-1
+  (run* (q)
+    (fresh (x y z)
+      (== q `(,x ,y ,z))
+      (<= `(h ,x (f ,y ,z)) `(h (g 3 4) ,x))))
+  '())
+
+(test-check 'local-vs-nonlocal-together-2
+  (run* (q)
+    (fresh (x y z)
+      (== q `(,x ,y ,z))
+      (<= `(h ,x (f 3 4)) `(h (f ,y ,z) ,x))))
+  '(((f 3 4) 3 4)))
+
+(test-check 'local-vs-nonlocal-together-3
+  (run* (q)
+    (fresh (x y z)
+      (== q `(,x ,y ,z))
+      (<= `(h (f ,y ,z) ,x) `(h ,x (g 3 4)))))
+  '())
+
+(test-check 'local-vs-nonlocal-together-4
+  (run* (q)
+    (fresh (x y z)
+      (== q `(,x ,y ,z))
+      (<= `(h ,x (f ,y ,z)) `(h (f 17 18) ,x))))
+  '(((f _.0 _.1) _.2 _.3)))
 
 (test-check 'right-structure-bound-1
   (run* (q)
