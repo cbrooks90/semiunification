@@ -143,7 +143,6 @@
       (<= x `(,y . (,y . ,y)))))
   '((_.0 _.1)))
 
-; There should be a difference between unbound and no constraint. Ask about this.
 (test-check 'bound-variable
   (run* (q)
     (fresh (x y)
@@ -274,18 +273,18 @@
       (<= y z)))
   '((2 2 2 2)))
 
-;(test-check 'R-acyclicity-failure-1
-;  (run* (q)
-;    (fresh (x y z)
-;      (== q `(,x ,y ,z))
-;      (<= y z)
-;      (<= `(f ,x ,x) `(f ,y (f ,z ,z)))))
-;  '())
+(test-check 'R-acyclicity-failure-1
+  (run* (q)
+    (fresh (x y z)
+      (== q `(,x ,y ,z))
+      (<= y z)
+      (<= `(f ,x ,x) `(f ,y (f ,z ,z)))))
+  '())
 
-;(test-check 'R-acyclicity-failure-2
-;  (run* (q)
-;    (fresh (x y z)
-;      (== q `(,x ,y ,z))
-;      (<= `(f ,x ,x) `(f ,y (f ,z ,z)))
-;      (<= y z)))
-;  '())
+(test-check 'R-acyclicity-failure-2
+  (run* (q)
+    (fresh (x y z)
+      (== q `(,x ,y ,z))
+      (<= `(f ,x ,x) `(f ,y (f ,z ,z)))
+      (<= y z)))
+  '())
