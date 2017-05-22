@@ -27,15 +27,18 @@
 (define (walk u s)
   (gen-walk u s resolves-to?))
 
-;(define (occurs x v s)
-;  (let ((v (walk v s #f)))
-;    (cond ((and (var? v) (eq? v x)))
-;          ((and (var? v) (var-instance? v x)) (error #f "R-acyclicity violation"))
-;          (else (and (pair? v) (or (occurs x (car v) s)
-;                                   (occurs x (cdr v) s)))))))
+(define (occurs x v s)
+  (let ((v (walk v s)))
+    (cond
+      ((and (var? v) (eq? v x)))
+      ((and (var? v) (resolves-to? v x)) (error #f "R-acyclicity violation"))
+      (else (and (pair? v) (or (occurs x (car v) s)
+                               (occurs x (cdr v) s)))))))
 
-(define (ext-s x v s)
-  (cons `(,x . ,v) s))
+(define (ext-s x v s aux)
+  (cond
+    ((occurs x v (append s aux)) #f)
+    (else (cons `(,x . ,v) s))))
 
 (define (<= u v)
   (lambda (s/c)
@@ -65,7 +68,7 @@
        => (lambda (x) (values (cdr x) a-s)))
       (else
         (let ((x (vector 'x)))
-          (values x (ext-s (cons u v) x a-s)))))))
+          (values x (cons (cons (cons u v) x) a-s)))))))
 
 (define (freshen t s eqn)
   (let ((t (walk t s)))
@@ -89,11 +92,11 @@
        (post l r (unify local-l r s local eqn) local ext eqn))
       ((not (eq? r local-r))
        (let-values (((s local ext)
-                     (semiunify l local-r (ext-s r (freshen l (append s local) eqn) s)
+                     (semiunify l local-r (ext-s r (freshen l (append s local) eqn) s local)
                                 local ext eqn test?)))
          (post l r s local ext eqn)))
-      ((var? r) (post l r (ext-s r (freshen l (append s local) eqn) s) local ext eqn))
-      ((var? l) (post l r s (ext-s l r local) ext eqn))
+      ((var? r) (post l r (ext-s r (freshen l (append s local) eqn) s local) local ext eqn))
+      ((var? l) (post l r s (ext-s l r local s) ext eqn))
       ((and (pair? l) (pair? r))
        (let-values (((s local ext) (semiunify (car l) (car r) s local ext eqn test?)))
          (if s (semiunify (cdr l) (cdr r) s local ext eqn test?) (values #f '() '()))))
@@ -106,12 +109,12 @@
     (cond
       ((not (eq? l l~))
        (let-values (((t _) (antiunify l~ r~ (append s local ext) '())))
-         (values s local (ext-s l t ext))))
+         (values s local (ext-s l t ext '()))))
       ((not (eq? r r~))
        (let-values (((new ls ext) (semiunify l~ r~ s '() '() eqn #t)))
          ; I think this is too much. Need to check that antiunification vars are not bound
          (if (eq? new s)
-             (values (ext-s r (freshen l~ (append s local) eqn) s)
+             (values (ext-s r (freshen l~ (append s local) eqn) s local)
                      (append ls local) ext)
              (values #f '() '()))))
       (else (values s local ext)))))
@@ -120,8 +123,8 @@
   (let ((u (walk u (append s local))) (v (walk v (append s local))))
     (cond
       ((and (var? u) (var? v) (var=? u v)) s)
-      ((var? u) (ext-s u v s))
-      ((var? v) (ext-s v u (if eqn (ext-s (freshen v '() eqn) u s) s)))
+      ((var? u) (ext-s u v s local))
+      ((var? v) (ext-s v u (if eqn (ext-s (freshen v '() eqn) u s local) s) local))
       ((and (pair? u) (pair? v))
        (let ((s (unify (car u) (car v) s local eqn)))
          (and s (unify (cdr u) (cdr v) s local eqn))))
