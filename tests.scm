@@ -274,19 +274,17 @@
   '((2 2 2 2)))
 
 (test-check 'R-acyclicity-failure-1
-  (guard (val ((eq? val 'R-acyclicity-violation) val))
-    (run* (q)
+  (run* (q)
       (fresh (x y z)
         (== q `(,x ,y ,z))
         (<= y z)
-        (<= `(f ,x ,x) `(f ,y (f ,z ,z))))))
-  'R-acyclicity-violation)
+        (<= `(f ,x ,x) `(f ,y (f ,z ,z)))))
+  '())
 
 (test-check 'R-acyclicity-failure-2
-  (guard (val ((eq? val 'R-acyclicity-violation) val))
-    (run* (q)
+  (run* (q)
       (fresh (x y z)
         (== q `(,x ,y ,z))
         (<= `(f ,x ,x) `(f ,y (f ,z ,z)))
-        (<= y z))))
-  'R-acyclicity-violation)
+        (<= y z)))
+  '())

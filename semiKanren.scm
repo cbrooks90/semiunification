@@ -15,10 +15,11 @@
 
 (define (resolves-to? u v)
   (let loop ((u (vector->list u)) (v (vector->list v)))
-    (cond ((null? v) #t)
-          ((null? u) #f)
-          ((equal? (car u) (car v)) (loop (cdr u) (cdr v)))
-          (else #f))))
+    (cond
+      ((null? v) #t)
+      ((null? u) #f)
+      ((equal? (car u) (car v)) (loop (cdr u) (cdr v)))
+      (else #f))))
 
 (define (gen-walk u s proc)
   (let ((pr (and (var? u) (assp (lambda (v) (proc u v)) s))))
@@ -31,7 +32,7 @@
   (let ((v (walk v s)))
     (cond
       ((and (var? v) (eq? v x)))
-      ((and (var? v) (resolves-to? v x)) (raise 'R-acyclicity-violation))
+      ((and (var? v) (resolves-to? v x)))
       (else (and (pair? v) (or (occurs x (car v) s)
                                (occurs x (cdr v) s)))))))
 
@@ -95,7 +96,10 @@
                      (semiunify l local-r (ext-s r (freshen l (append s local) eqn) s local)
                                 local ext eqn test?)))
          (post l r s local ext eqn)))
-      ((var? r) (post l r (ext-s r (freshen l (append s local) eqn) s local) local ext eqn))
+      ((var? r)
+       (let ((s (ext-s r (freshen l (append s local) eqn) s (append ext local))))
+         (if s (post l r s local ext eqn)
+             (values #f '() '()))))
       ((var? l) (post l r s (ext-s l r local s) ext eqn))
       ((and (pair? l) (pair? r))
        (let-values (((s local ext) (semiunify (car l) (car r) s local ext eqn test?)))
@@ -107,6 +111,7 @@
   (let ((l~ (walk l ext))
         (r~ (walk r ext)))
     (cond
+      ((not local) (values #f '() '()))
       ((not (eq? l l~))
        (let-values (((t _) (antiunify l~ r~ (append s local ext) '())))
          (values s local (ext-s l t ext '()))))
