@@ -31,7 +31,7 @@
   (let ((v (walk v s)))
     (cond
       ((and (var? v) (eq? v x)))
-      ((and (var? v) (resolves-to? v x)) (error #f "R-acyclicity violation"))
+      ((and (var? v) (resolves-to? v x)) (raise 'R-acyclicity-violation))
       (else (and (pair? v) (or (occurs x (car v) s)
                                (occurs x (cdr v) s)))))))
 
