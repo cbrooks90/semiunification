@@ -133,6 +133,52 @@
     (<= 2 x))
   '())
 
+;; Occurs check tests
+
+(test-check 'R-acyclicity-failure-1
+  (run* (q)
+    (fresh (x y z)
+      (== q `(,x ,y ,z))
+      (<= y z)
+      (<= `(f ,x ,x) `(f ,y (f ,z ,z)))))
+  '())
+
+(test-check 'R-acyclicity-failure-2
+  (run* (q)
+    (fresh (x y z)
+      (== q `(,x ,y ,z))
+      (<= `(f ,x ,x) `(f ,y (f ,z ,z)))
+      (<= y z)))
+  '())
+
+(test-check 'simple-cycle-1
+  (run* (z)
+    (fresh (y)
+      (<= `(f ,z ,z) y)
+      (<= y z)))
+  '())
+
+(test-check 'simple-cycle-2
+  (run* (z)
+    (fresh (y)
+      (<= y z)
+      (<= `(f ,z ,z) y)))
+  '())
+
+(test-check 'occurs-false-positive-1
+  (run* (x)
+    (fresh (y z)
+      (<= x (cons y z))
+      (<= x y)))
+  '(_.0))
+
+(test-check 'occurs-false-positive-2
+  (run* (x)
+    (fresh (y z)
+      (<= x y)
+      (<= x (cons y z))))
+  '(_.0))
+
 ;; Other tests
 
 (test-check 'trivial-conjunction
@@ -272,19 +318,3 @@
       (<= `(f ,x ,x) `(f ,y ,w))
       (<= y z)))
   '((2 2 2 2)))
-
-(test-check 'R-acyclicity-failure-1
-  (run* (q)
-      (fresh (x y z)
-        (== q `(,x ,y ,z))
-        (<= y z)
-        (<= `(f ,x ,x) `(f ,y (f ,z ,z)))))
-  '())
-
-(test-check 'R-acyclicity-failure-2
-  (run* (q)
-      (fresh (x y z)
-        (== q `(,x ,y ,z))
-        (<= `(f ,x ,x) `(f ,y (f ,z ,z)))
-        (<= y z)))
-  '())
