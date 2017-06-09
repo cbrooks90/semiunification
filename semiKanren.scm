@@ -41,6 +41,11 @@
     ((occurs x v (append s aux)) #f)
     (else (cons `(,x . ,v) s))))
 
+(define (local-ext-s x v s aux eqn)
+  (cond
+    ((occurs (freshen x '() eqn) v (append s aux)) #f)
+    (else (cons `(,x . ,v) s))))
+
 (define (<= u v)
   (lambda (s/c)
     (let-values (((global local ext)
@@ -97,10 +102,10 @@
                                 local ext eqn test?)))
          (post l r s local ext eqn)))
       ((var? r)
-       (let ((s (ext-s r (freshen l (append s local) eqn) s (append ext local))))
+       (let ((s (ext-s r (freshen l (append s local) eqn) s '()))); used to be (append ext local))))
          (if s (post l r s local ext eqn)
              (values #f '() '()))))
-      ((var? l) (post l r s (ext-s l r local s) ext eqn))
+      ((var? l) (post l r s (local-ext-s l r local s eqn) ext eqn))
       ((and (pair? l) (pair? r))
        (let-values (((s local ext) (semiunify (car l) (car r) s local ext eqn test?)))
          (if s (semiunify (cdr l) (cdr r) s local ext eqn test?) (values #f '() '()))))
