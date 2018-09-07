@@ -84,11 +84,12 @@
         (if (var? term) (values s (cons lb lbs) (cons ub ubs))
             (let-values (((new-lbs new-ubs) (split a-s)))
               (values (cons (cons v term) s) (append new-lbs lbs) (append new-ubs ubs)))))
-      ;; f(x,y) <= z
+      ;; Consider what should happen after f(x,y) <= z:
       ;; z now has a lower bound of f(x,y) and no upper bound. So z = f(x',y'),
       ;; where x' has a lower bound of x and y' has a lower bound of y.
       ;; Can we get this by antiunification of f(x,y) and f(x,y) with a flag?
-      ;; Need to invert the anti-substitution and append it
+      ;; Split does this already, but if we do the duplication trick, it will also
+      ;; make x and y upper bounds as well which should be avoided.
       ))
 
 (define (adjust-upper-bound v term s lbs ubs)
