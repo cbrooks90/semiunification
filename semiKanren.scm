@@ -6,12 +6,13 @@
 (define (var? x) (vector? x))
 (define (var=? x1 x2) (and (vector? x1) (equal? x1 x2)))
 
-(define (state s b vc ec)
-  `(,s ,b ,vc . ,ec))
+(define (state s lbs ubs vc ec)
+  `(,s ,lbs ,ubs ,vc . ,ec))
 (define subst car)
-(define bounds cadr)
-(define var-no caddr)
-(define eq-no cdddr)
+(define lbs cadr)
+(define ubs caddr)
+(define var-no cadddr)
+(define eq-no cddddr)
 
 (define (walk u s)
   (let ((pr (and (var? u) (assp (lambda (v) (var=? u v)) s))))
@@ -31,14 +32,14 @@
 
 (define (<= u v)
   (lambda (s/c)
-    (let-values (((s bounds) (semiunify u v (subst s/c) (bounds s/c))))
-      (if s (unit (state s bounds (var-no s/c) (+ (eq-no s/c) 1)))
+    (let-values (((s lbs ubs) (semiunify u v (subst s/c) (lbs s/c) (ubs s/c))))
+      (if s (unit (state s lbs ubs (var-no s/c) (+ (eq-no s/c) 1)))
           mzero))))
 
 (define (== u v)
   (lambda (s/c)
     (let-values (((_ s) (unify u v (subst s/c))))
-      (if s (unit (state s (bounds s/c) (var-no s/c) (eq-no s/c))) mzero))))
+      (if s (unit (state s (lbs s/c) (ubs s/c) (var-no s/c) (eq-no s/c))) mzero))))
 
 (define (unit s/c) (cons s/c mzero))
 (define mzero '())
@@ -72,39 +73,39 @@
      (else (values #f s)))))
 
 ;; Need to invert the anti-substitution and append it
-(define (adjust-upper-bound v term s bounds)
-  (let ((b (assoc v bounds)))
+(define (adjust-upper-bound v term s lbs ubs)
+  (let ((b (assoc v ubs)))
     (if b
-        (let-values (((term anti-s _) (antiunify (cddr b) term s 'idk)))
-          (cons (cons v (cons (cadr b) term)) bounds))
-        (cons (cons v (cons 'bottom term)) bounds))))
+        (let-values (((term anti-s _) (antiunify (cdr b) term s 'idk)))
+          (values s lbs (cons (cons v term) ubs)))
+        (values s lbs (cons (cons v term) ubs)))))
 
 ;; Need to factor out common symbols from the endpoints and update the subsitution.
 ;; This also applies to the above
-(define (adjust-lower-bound v term s bounds)
-  (let ((b (assoc v bounds)))
+(define (adjust-lower-bound v term s lbs ubs)
+  (let ((b (assoc v lbs)))
     (if b
-        (let-values (((term s) (unify (cadr b) term s 'idk)))
-          (cons (cons v (cons term (cddr b))) bounds))
-        (cons (cons v (cons term 'top)) bounds))))
+        (let-values (((term s) (unify (cdr b) term s 'idk)))
+          (values s (cons (cons v term) lbs) ubs))
+        (values s (cons (cons v term) lbs) ubs))))
 
-(define (semiunify l r s bounds)
+(define (semiunify l r s lbs ubs)
   (let ((l (walk l s))
         (r (walk r s)))
     (cond
-     ((var? l) (values s (adjust-upper-bound l r s bounds)))
-     ((var? r) (values s (adjust-lower-bound r l s bounds)))
+     ((var? l) (adjust-upper-bound l r s lbs ubs))
+     ((var? r) (adjust-lower-bound r l s lbs ubs))
      ((and (pair? u) (pair? v))
-      (let*-values (((s bounds) (semiunify (car u) (car v) s bounds))
-                    ((s bounds) (semiunify (cdr u) (cdr v) s bounds)))
-        (values s bounds)))
-     ((equal? u v) (values s bounds))
+      (let*-values (((s lbs ubs) (semiunify (car u) (car v) s lbs ubs))
+                    ((s lbs ubs) (semiunify (cdr u) (cdr v) s lbs ubs)))
+        (values s lbs ubs)))
+     ((equal? u v) (values s lbs ubs))
      (else #f))))
 
 (define (call/fresh f)
   (lambda (s/c)
     (let ((c (var-no s/c)))
-      ((f (var c)) (state (subst s/c) (bounds s/c) (+ c 1) (eq-no s/c))))))
+      ((f (var c)) (state (subst s/c) (lbs s/c) (ubs s/c) (+ c 1) (eq-no s/c))))))
 
 (define (disj g1 g2) (lambda (s/c) (mplus (g1 s/c) (g2 s/c))))
 (define (conj g1 g2) (lambda (s/c) (bind (g1 s/c) g2)))
