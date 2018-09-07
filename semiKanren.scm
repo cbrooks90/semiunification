@@ -74,8 +74,11 @@
 
 (define (factorize lb ub v lbs ubs s)
   (define (split anti-subst)
-    #;todo
-    (values '() '()))
+    (let loop ((li anti-subst) (lbs lbs) (ubs ubs))
+      (if (null? li) (values lbs ubs)
+          (loop (cdr li)
+                (cons (cons (cdar li) (caaar li)) lbs)
+                (cons (cons (cdar li) (cdaar li)) ubs)))))
   (let-values (((term a-s _) (antiunify lb ub s 'idk)))
     (if (var? term) (values s (cons (cons v lb) lbs) (cons (cons v ub) ubs))
         (let-values (((new-lbs new-ubs) (split a-s)))
