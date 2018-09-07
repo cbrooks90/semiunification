@@ -96,7 +96,7 @@
   (let ((lb (assoc v lbs))
         (ub (assoc v ubs)))
     (if lb
-        (let-values (((term s) (unify (cdr lb) term s 'idk)))
+        (let-values (((term s) (unify (cdr lb) term s)))
           (if ub
               (factorize term (cdr ub) v lbs ubs s)
               (values s (cons (cons v term) lbs) ubs)))
@@ -108,11 +108,11 @@
     (cond
      ((var? l) (adjust-upper-bound l r s lbs ubs))
      ((var? r) (adjust-lower-bound r l s lbs ubs))
-     ((and (pair? u) (pair? v))
-      (let*-values (((s lbs ubs) (semiunify (car u) (car v) s lbs ubs))
-                    ((s lbs ubs) (semiunify (cdr u) (cdr v) s lbs ubs)))
+     ((and (pair? l) (pair? r))
+      (let*-values (((s lbs ubs) (semiunify (car l) (car r) s lbs ubs))
+                    ((s lbs ubs) (semiunify (cdr l) (cdr r) s lbs ubs)))
         (values s lbs ubs)))
-     ((equal? u v) (values s lbs ubs))
+     ((equal? l r) (values s lbs ubs))
      (else #f))))
 
 (define (call/fresh f)
