@@ -51,41 +51,41 @@
 
 (define (take n $)
   (if (zero? n) '()
-    (let (($ (pull $)))
-      (if (null? $) '() (cons (car $) (take (- n 1) (cdr $)))))))
+      (let (($ (pull $)))
+        (if (null? $) '() (cons (car $) (take (- n 1) (cdr $)))))))
 
 (define (reify-1st s/c)
-  (let ((v (walk* (var 0) (subst s/c) resolves-to?)))
-    (walk* v (reify-s v '()) var=?)))
+  (let ((v (walk* (var 0) (car s/c))))
+    (walk* v (reify-s v '()))))
 
-(define (walk* v s proc)
-  (let ((v (gen-walk v s proc)))
+(define (walk* v s)
+  (let ((v (walk v s)))
     (cond
-      ((var? v) v)
-      ((pair? v) (cons (walk* (car v) s proc)
-                   (walk* (cdr v) s proc)))
-      (else v))))
+     ((var? v) v)
+     ((pair? v) (cons (walk* (car v) s)
+                      (walk* (cdr v) s)))
+     (else  v))))
 
 (define (reify-s v s)
-  (let ((v (gen-walk v s var=?)))
+  (let ((v (walk v s)))
     (cond
-      ((var? v)
-       (let  ((n (reify-name (length s))))
-         (cons `(,v . ,n) s)))
-      ((pair? v) (reify-s (cdr v) (reify-s (car v) s)))
-      (else s))))
+     ((var? v)
+      (let  ((n (reify-name (length s))))
+        (cons `(,v . ,n) s)))
+     ((pair? v) (reify-s (cdr v) (reify-s (car v) s)))
+     (else s))))
 
 (define (reify-name n)
   (string->symbol
-    (string-append "_" "." (number->string n))))
+   (string-append "_" "." (number->string n))))
 
 (define (fresh/nf n f)
   (letrec
-    ((app-f/v*
-       (lambda (n v*)
-         (cond
+      ((app-f/v*
+        (lambda (n v*)
+          (cond
            ((zero? n) (apply f (reverse v*)))
            (else (call/fresh
-                   (lambda (x)
-                     (app-f/v* (- n 1) (cons x v*)))))))))
-     (app-f/v* n '())))
+                  (lambda (x)
+                    (app-f/v* (- n 1) (cons x v*)))))))))
+    (app-f/v* n '())))
