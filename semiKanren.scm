@@ -72,21 +72,34 @@
      ((equal? u v) (values u s))
      (else (values #f s)))))
 
+(define (factorize lb ub v lbs ubs s)
+  (define (split anti-subst)
+    #;todo
+    (values '() '()))
+  (let-values (((term a-s _) (antiunify lb ub s 'idk)))
+    (if (var? term) (values s (cons (cons v lb) lbs) (cons (cons v ub) ubs))
+        (let-values (((new-lbs new-ubs) (split a-s)))
+          (values (cons (cons v term) s) (append new-lbs lbs) (append new-ubs ubs))))))
+
 ;; Need to invert the anti-substitution and append it
 (define (adjust-upper-bound v term s lbs ubs)
-  (let ((b (assoc v ubs)))
-    (if b
-        (let-values (((term anti-s _) (antiunify (cdr b) term s 'idk)))
-          (values s lbs (cons (cons v term) ubs)))
+  (let ((lb (assoc v lbs))
+        (ub (assoc v ubs)))
+    (if ub
+        (let-values (((term anti-s _) (antiunify (cdr ub) term s 'idk)))
+          (if lb
+              (factorize (cdr lb) term v lbs ubs s)
+              (values s lbs (cons (cons v term) ubs))))
         (values s lbs (cons (cons v term) ubs)))))
 
-;; Need to factor out common symbols from the endpoints and update the subsitution.
-;; This also applies to the above
 (define (adjust-lower-bound v term s lbs ubs)
-  (let ((b (assoc v lbs)))
-    (if b
-        (let-values (((term s) (unify (cdr b) term s 'idk)))
-          (values s (cons (cons v term) lbs) ubs))
+  (let ((lb (assoc v lbs))
+        (ub (assoc v ubs)))
+    (if lb
+        (let-values (((term s) (unify (cdr lb) term s 'idk)))
+          (if ub
+              (factorize term (cdr ub) v lbs ubs s)
+              (values s (cons (cons v term) lbs) ubs)))
         (values s (cons (cons v term) lbs) ubs))))
 
 (define (semiunify l r s lbs ubs)
