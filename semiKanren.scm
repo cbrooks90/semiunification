@@ -79,31 +79,34 @@
           (loop (cdr li)
                 (cons (cons (cdar li) (caaar li)) lbs)
                 (cons (cons (cdar li) (cdaar li)) ubs)))))
-  (let-values (((term a-s _) (antiunify lb ub s 'idk)))
-    (if (var? term) (values s (cons (cons v lb) lbs) (cons (cons v ub) ubs))
-        (let-values (((new-lbs new-ubs) (split a-s)))
-          (values (cons (cons v term) s) (append new-lbs lbs) (append new-ubs ubs))))))
+  (if (and lb ub)
+      (let-values (((term a-s _) (antiunify (cdr lb) (cdr ub) s 'idk)))
+        (if (var? term) (values s (cons lb lbs) (cons ub ubs))
+            (let-values (((new-lbs new-ubs) (split a-s)))
+              (values (cons (cons v term) s) (append new-lbs lbs) (append new-ubs ubs)))))
+      ;; f(x,y) <= z
+      ;; z now has a lower bound of f(x,y) and no upper bound. So z = f(x',y'),
+      ;; where x' has a lower bound of x and y' has a lower bound of y.
+      ;; Can we get this by antiunification of f(x,y) and f(x,y) with a flag?
+      ;; Need to invert the anti-substitution and append it
+      ))
 
-;; Need to invert the anti-substitution and append it
 (define (adjust-upper-bound v term s lbs ubs)
   (let ((lb (assoc v lbs))
         (ub (assoc v ubs)))
     (if ub
+        ;; TODO: The anti-substitution needs to be used
         (let-values (((term anti-s _) (antiunify (cdr ub) term s 'idk)))
-          (if lb
-              (factorize (cdr lb) term v lbs ubs s)
-              (values s lbs (cons (cons v term) ubs))))
-        (values s lbs (cons (cons v term) ubs)))))
+          (factorize lb term v lbs ubs s))
+        (factorize lb term v lbs ubs s))))
 
 (define (adjust-lower-bound v term s lbs ubs)
   (let ((lb (assoc v lbs))
         (ub (assoc v ubs)))
     (if lb
         (let-values (((term s) (unify (cdr lb) term s)))
-          (if ub
-              (factorize term (cdr ub) v lbs ubs s)
-              (values s (cons (cons v term) lbs) ubs)))
-        (values s (cons (cons v term) lbs) ubs))))
+          (factorize term ub v lbs ubs s))
+        (factorize term ub v lbs ubs s))))
 
 (define (semiunify l r s lbs ubs)
   (let ((l (walk l s))
