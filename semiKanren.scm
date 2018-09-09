@@ -90,7 +90,8 @@
                 (cons (cons (cdar li) (caaar li)) lbs)
                 (cons (cons (cdar li) (cdaar li)) ubs)))))
   (cond
-   ((not lb) (error 'factorize "Not implemented"))
+   ((not lb)
+    (values s lbs (cons ub ubs)))
    ((not ub)
     (let-values (((term new-lbs) (antiunify-top (cdr lb) '() 'idk)))
       (values (cons (cons v term) s) (append new-lbs lbs) ubs)))
