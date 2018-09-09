@@ -44,6 +44,17 @@
 (define (unit s/c) (cons s/c mzero))
 (define mzero '())
 
+(define (antiunify-top u old id)
+  (cond
+   ((pair? u)
+    (let*-values (((t1 old) (antiunify-top (car u) id))
+                  ((t2 old) (antiunify-top (cdr u) id)))
+      (values (cons t1 t2) old)))
+   ((var? u)
+    (let ((v (list->vector (append (vector->list u) (list id)))))
+      (values v (cons (cons v u) old))))
+   (else (values u old))))
+
 (define (antiunify u v s id)
   (let rec ((u u) (v v) (a-s '()) (count 0))
     (let ((u (walk u s)) (v (walk v s)))
@@ -79,18 +90,16 @@
           (loop (cdr li)
                 (cons (cons (cdar li) (caaar li)) lbs)
                 (cons (cons (cdar li) (cdaar li)) ubs)))))
-  (if (and lb ub)
-      (let-values (((term a-s _) (antiunify (cdr lb) (cdr ub) s 'idk)))
-        (if (var? term) (values s (cons lb lbs) (cons ub ubs))
-            (let-values (((new-lbs new-ubs) (split a-s)))
-              (values (cons (cons v term) s) (append new-lbs lbs) (append new-ubs ubs)))))
-      ;; Consider what should happen after f(x,y) <= z:
-      ;; z now has a lower bound of f(x,y) and no upper bound. So z = f(x',y'),
-      ;; where x' has a lower bound of x and y' has a lower bound of y.
-      ;; Can we get this by antiunification of f(x,y) and f(x,y) with a flag?
-      ;; Split does this already, but if we do the duplication trick, it will also
-      ;; make x and y upper bounds as well which should be avoided.
-      ))
+  (cond
+   ((not lb) (error 'factorize "Not implemented"))
+   ((not ub)
+    (let-values (((term new-lbs) (antiunify-top (cdr lb) '() 'idk)))
+      (values (cons (cons v term) s) (append new-lbs lbs) ubs)))
+   (else
+    (let-values (((term a-s _) (antiunify (cdr lb) (cdr ub) s 'idk)))
+      (if (var? term) (values s (cons lb lbs) (cons ub ubs))
+          (let-values (((new-lbs new-ubs) (split a-s)))
+            (values (cons (cons v term) s) (append new-lbs lbs) (append new-ubs ubs))))))))
 
 (define (adjust-upper-bound v term s lbs ubs)
   (let ((lb (assoc v lbs))
@@ -98,16 +107,16 @@
     (if ub
         ;; TODO: The anti-substitution needs to be used
         (let-values (((term anti-s _) (antiunify (cdr ub) term s 'idk)))
-          (factorize lb term v lbs ubs s))
-        (factorize lb term v lbs ubs s))))
+          (factorize lb (cons v term) v lbs ubs s))
+        (factorize lb (cons v term) v lbs ubs s))))
 
 (define (adjust-lower-bound v term s lbs ubs)
   (let ((lb (assoc v lbs))
         (ub (assoc v ubs)))
     (if lb
         (let-values (((term s) (unify (cdr lb) term s)))
-          (factorize term ub v lbs ubs s))
-        (factorize term ub v lbs ubs s))))
+          (factorize (cons v term) ub v lbs ubs s))
+        (factorize (cons v term) ub v lbs ubs s))))
 
 (define (semiunify l r s lbs ubs)
   (let ((l (walk l s))
