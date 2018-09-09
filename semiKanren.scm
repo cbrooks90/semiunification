@@ -57,18 +57,17 @@
 
 (define (antiunify u v s id)
   (let rec ((u u) (v v) (a-s '()) (count 0))
-    (let ((u (walk u s)) (v (walk v s)))
-      (cond
-       ((and (pair? u) (pair? v))
-        (let*-values (((t1 a-s count) (rec (car u) (car v) a-s count))
-                      ((t2 a-s count) (rec (cdr u) (cdr v) a-s count)))
-          (values (cons t1 t2) a-s count)))
-       ((equal? u v) (values u a-s count))
-       ((assp (lambda (x) (equal? (cons u v) x)) a-s)
-        => (lambda (x) (values (cdr x) a-s count)))
-       (else
-        (let ((x (vector id count)))
-          (values x (cons (cons (cons u v) x) a-s) (+ count 1))))))))
+    (cond
+     ((and (pair? u) (pair? v))
+      (let*-values (((t1 a-s count) (rec (car u) (car v) a-s count))
+                    ((t2 a-s count) (rec (cdr u) (cdr v) a-s count)))
+        (values (cons t1 t2) a-s count)))
+     ((equal? u v) (values u a-s count))
+     ((assp (lambda (x) (equal? (cons u v) x)) a-s)
+      => (lambda (x) (values (cdr x) a-s count)))
+     (else
+      (let ((x (vector id count)))
+        (values x (cons (cons (cons u v) x) a-s) (+ count 1)))))))
 
 (define (unify u v s)
   (let ((u (walk u s)) (v (walk v s)))
