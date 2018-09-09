@@ -95,6 +95,8 @@
    ((not ub)
     (let-values (((term new-lbs) (antiunify-top (cdr lb) '() 'idk)))
       (values (cons (cons v term) s) (append new-lbs lbs) ubs)))
+   ((and (var? (cdr ub)) (not (var? (cdr lb))))
+    (values #f lbs ubs))
    (else
     (let-values (((term a-s _) (antiunify (cdr lb) (cdr ub) s 'idk)))
       (if (var? term) (values s (cons lb lbs) (cons ub ubs))
