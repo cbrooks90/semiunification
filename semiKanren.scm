@@ -126,10 +126,9 @@
      ((var? l) (adjust-upper-bound l r s bds vs))
      ((var? r) (adjust-lower-bound r l s bds vs))
      ((and (pair? l) (pair? r))
-      (let*-values (((s bds vs) (semiunify (car l) (car r) s bds vs))
-                    ((s bds vs) (if s (semiunify (cdr l) (cdr r) s bds vs)
-                                    (values #f bds vs))))
-        (values s bds vs)))
+      (let-values (((s bds vs) (semiunify (car l) (car r) s bds vs)))
+        (if s (semiunify (cdr l) (cdr r) s bds vs)
+            (values #f bds vs))))
      ((equal? l r) (values s bds vs))
      (else (values #f bds vs)))))
 
