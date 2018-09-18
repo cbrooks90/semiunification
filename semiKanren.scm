@@ -49,17 +49,6 @@
 (define (unit s/c) (cons s/c mzero))
 (define mzero '())
 
-(define (antiunify-top u bds id)
-  (cond
-   ((pair? u)
-    (let*-values (((t1 bds) (antiunify-top (car u) bds id))
-                  ((t2 bds) (antiunify-top (cdr u) bds id)))
-      (values (cons t1 t2) bds)))
-   ((var? u)
-    (let ((v (list->vector (append (vector->list u) (list id)))))
-      (values v (cons (cons v `(,u . #f)) bds))))
-   (else (values u old))))
-
 (define (antiunify u v)
   (cond
    ((not u) v)
@@ -69,7 +58,7 @@
    ((and (pair? u) (pair? v))
     (cons (antiunify (car u) (car v)) (antiunify (cdr u) (cdr v))))
    ((equal? u v) u)
-   (else (vector 'bottommmm))))
+   (else (vector 'bottom))))
 
 (define (unify u v s)
   (let ((u (walk u s)) (v (walk v s)))
