@@ -118,7 +118,7 @@
 
 (define (adjust-lower-bound v term s bds vs)
   (let ((b (bounds v bds)))
-    (let-values (((term s) (unify (car b) term s)))
+    (let-values (((term _) (unify (car b) term s)))
       (adjust term (cdr b) s bds v vs))))
 
 (define (semiunify l r s bds vs)
