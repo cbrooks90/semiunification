@@ -35,14 +35,13 @@
 (define (unify u v s)
   (let ((u (walk u s)) (v (walk v s)))
     (cond
-     ((and (var? u) (var? v) (var=? u v)) (values u s))
+     ((eqv? u v) (values u s))
      ((var? u) (values v (ext-s u v s)))
      ((var? v) (values u (ext-s v u s)))
      ((and (pair? u) (pair? v))
       (let*-values (((t1 s) (unify (car u) (car v) s))
                     ((t2 s) (if s (unify (cdr u) (cdr v) s) (values #f #f))))
         (if s (values (cons t1 t2) s) (values #f #f))))
-     ((equal? u v) (values u s))
      (else (values #f #f)))))
 
 ;; Helper functions for semiunification
