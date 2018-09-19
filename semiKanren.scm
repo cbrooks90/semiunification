@@ -1,65 +1,36 @@
-;; Jason Hemann and Dan Friedman
-;; from "μKanren: A Minimal Functional Core for Relational Programming",
+;; Copyright © 2018 Daniel P. Friedman, William E. Byrd, Oleg Kiselyov, and Jason Hemann
 ;; with bonus semiunification by Chris Brooks
 
 (define (var c) (vector c))
 (define (var? x) (vector? x))
-(define (var=? x1 x2) (and (vector? x1) (equal? x1 x2)))
-(define (bottom? x) (equal? 'bottom (vector-ref x 0)))
 
-(define (state s bds vc ec)
-  `(,s ,bds ,vc . ,ec))
+(define (bottom? x) (equal? x (var '⊥)))
+
+(define (state s bds) (cons s bds))
 (define subst car)
-(define bds cadr)
-(define var-no caddr)
-(define eq-no cdddr)
+(define bds cdr)
+(define empty-state (cons '() '()))
 
 (define (walk u s)
-  (let ((pr (and (var? u) (assp (lambda (v) (var=? u v)) s))))
+  (let ((pr (and (var? u) (assv u s))))
     (if pr (walk (cdr pr) s) u)))
 
 (define (bounds v li)
-  (let ((pr (assp (lambda (x) (var=? x v)) li)))
-    (if pr
-        (cdr pr)
-        `(,(vector 'bottom (vector-ref v 0)) . #f))))
+  (let ((pr (assv v li)))
+    (if pr (cdr pr)
+        `(,(vector 'init (vector-ref v 0)) . #f))))
 
 (define (occurs x v s)
   (let ((v (walk v s)))
     (cond
-     ((and (var? v) (eq? v x)))
-     (else (and (pair? v) (or (occurs x (car v) s)
-                              (occurs x (cdr v) s)))))))
+     ((var? v) (eqv? v x))
+     ((pair? v) (or (occurs x (car v) s) (occurs x (cdr v) s)))
+     (else #f))))
 
 (define (ext-s x v s)
   (cond
    #;((occurs x v s))
    (else (cons `(,x . ,v) s))))
-
-(define (<= u v)
-  (lambda (s/c)
-    (let-values (((s bds _) (semiunify u v (subst s/c) (bds s/c) '())))
-      (if s (unit (state s bds (var-no s/c) (+ (eq-no s/c) 1)))
-          mzero))))
-
-(define (== u v)
-  (lambda (s/c)
-    (let-values (((_ s) (unify u v (subst s/c))))
-      (if s (unit (state s (bds s/c) (var-no s/c) (eq-no s/c))) mzero))))
-
-(define (unit s/c) (cons s/c mzero))
-(define mzero '())
-
-(define (antiunify u v)
-  (cond
-   ((not u) v)
-   ((not v) u)
-   ((var? u) u)
-   ((var? v) v)
-   ((and (pair? u) (pair? v))
-    (cons (antiunify (car u) (car v)) (antiunify (cdr u) (cdr v))))
-   ((equal? u v) u)
-   (else (vector 'bottom))))
 
 (define (unify u v s)
   (let ((u (walk u s)) (v (walk v s)))
@@ -73,6 +44,8 @@
         (if s (values (cons t1 t2) s) (values #f #f))))
      ((equal? u v) (values u s))
      (else (values #f #f)))))
+
+;; Helper functions for semiunification
 
 (define (factorize lb ub bds s pairs)
   (cond
@@ -100,6 +73,17 @@
       (let-values (((term s bds _) (factorize lb ub bds s '())))
         (values (and s (ext-s v term s)) bds vs))))
 
+(define (antiunify u v)
+  (cond
+   ((not u) v)
+   ((not v) u)
+   ((var? u) u)
+   ((var? v) v)
+   ((and (pair? u) (pair? v))
+    (cons (antiunify (car u) (car v)) (antiunify (cdr u) (cdr v))))
+   ((equal? u v) u)
+   (else (var '⊥))))
+
 (define (adjust-upper-bound v term s bds vs)
   (let-values (((_ s) (if (assoc v vs) (unify term (cdr (assoc v vs)) s) (values #f s))))
     (let ((b (bounds v bds))
@@ -126,22 +110,105 @@
      ((equal? l r) (values s bds vs))
      (else (values #f bds vs)))))
 
-(define (call/fresh f)
-  (lambda (s/c)
-    (let ((c (var-no s/c)))
-      ((f (var c)) (state (subst s/c) (bds s/c) (+ c 1) (eq-no s/c))))))
+(define (<= u v)
+  (lambda (s/b)
+    (let-values (((s bds _) (semiunify u v (subst s/b) (bds s/b) '())))
+      (if s (cons (state s bds) '()) '()))))
 
-(define (disj g1 g2) (lambda (s/c) (mplus (g1 s/c) (g2 s/c))))
-(define (conj g1 g2) (lambda (s/c) (bind (g1 s/c) g2)))
+(define (== u v)
+  (lambda (s/b)
+    (let-values (((_ s) (unify u v (subst s/b))))
+      (if s (cons (state s (bds s/b)) '()) '()))))
 
-(define (mplus $1 $2)
+;; The following language definitions come from The Reasoned Schemer, 2nd ed.
+
+(define (append-inf s-inf t-inf)
   (cond
-   ((null? $1) $2)
-   ((procedure? $1) (lambda () (mplus $2 ($1))))
-   (else (cons (car $1) (mplus (cdr $1) $2)))))
+   ((null? s-inf) t-inf)
+   ((pair? s-inf)
+    (cons (car s-inf)
+      (append-inf (cdr s-inf) t-inf)))
+   (else (lambda ()
+           (append-inf t-inf (s-inf))))))
 
-(define (bind $ g)
+(define (append-map-inf g s-inf)
   (cond
-   ((null? $) mzero)
-   ((procedure? $) (lambda () (bind ($) g)))
-   (else (mplus (g (car $)) (bind (cdr $) g)))))
+   ((null? s-inf) '())
+   ((pair? s-inf)
+    (append-inf (g (car s-inf))
+      (append-map-inf g (cdr s-inf))))
+   (else (lambda () (append-map-inf g (s-inf))))))
+
+(define (conj2 g1 g2)
+  (lambda (s/b)
+    (append-map-inf g2 (g1 s/b))))
+
+(define-syntax conj
+  (syntax-rules ()
+    ((conj) (lambda (s/b) `(,s/b)))
+    ((conj g) g)
+    ((conj g0 g ...) (conj2 g0 (conj g ...)))))
+
+(define (call/fresh name f)
+  (f (var name)))
+
+(define-syntax fresh
+  (syntax-rules ()
+    ((fresh () g ...) (conj g ...))
+    ((fresh (x0 x ...) g ...)
+     (call/fresh 'x_0
+       (lambda (x0)
+         (fresh (x ...) g ...))))))
+
+(define (reify-name n)
+  (string->symbol
+   (string-append "_" (number->string n))))
+
+(define (reify-s v r)
+  (let ((v (walk v r)))
+    (cond
+     ((var? v)
+      (let* ((n (length r))
+             (rn (reify-name n)))
+        (cons `(,v . ,rn) r)))
+     ((pair? v)
+      (reify-s (cdr v) (reify-s (car v) r)))
+     (else r))))
+
+(define (walk* v s)
+  (let ((v (walk v s)))
+    (cond
+     ((var? v) v)
+     ((pair? v) (cons (walk* (car v) s) (walk* (cdr v) s)))
+     (else v))))
+
+(define (reify v s)
+  (let* ((v (walk* v s))
+         (r (reify-s v '())))
+    (walk* v r)))
+
+(define (take-inf n s-inf)
+  (cond
+   ((and n (zero? n)) '())
+   ((null? s-inf) '())
+   ((pair? s-inf)
+    (cons (car s-inf)
+      (take-inf (and n (sub1 n)) (cdr s-inf))))
+   (else (take-inf n (s-inf)))))
+
+(define (run-goal n g)
+  (take-inf n (g empty-state)))
+
+(define-syntax run
+  (syntax-rules ()
+    ((run n (x0 x ...) g ...)
+     (run n q (fresh (x0 x ...)
+                (== `(,x0 ,x ...) q) g ...)))
+    ((run n q g ...)
+     (let ((q (var 'q)))
+       (map (lambda (s/b) (reify q (subst s/b)))
+         (run-goal n (conj g ...)))))))
+
+(define-syntax run*
+  (syntax-rules ()
+    ((run* q g ...) (run #f q g ...))))
