@@ -190,17 +190,19 @@
       (reify-s (cdr v) (reify-s (car v) r)))
      (else r))))
 
-(define (walk* v s)
+(define (walk* v s bds)
   (let ((v (walk v s)))
     (cond
-     ((var? v) v)
-     ((pair? v) (cons (walk* (car v) s) (walk* (cdr v) s)))
+     ((var? v)
+      (let-values (((t s bds prs) (factorize (walk (car (bounds v bds)) s) #f bds s '())))
+        (if (null? prs) (walk* t s bds) v)))
+     ((pair? v) (cons (walk* (car v) s bds) (walk* (cdr v) s bds)))
      (else v))))
 
-(define (reify v s)
-  (let* ((v (walk* v s))
+(define (reify v s bds)
+  (let* ((v (walk* v s bds))
          (r (reify-s v '())))
-    (walk* v r)))
+    (walk* v r bds)))
 
 (define (take-inf n s-inf)
   (cond
@@ -221,7 +223,7 @@
                 (== `(,x0 ,x ...) q) g ...)))
     ((run n q g ...)
      (let ((q (var 'q)))
-       (map (lambda (s/b) (reify q (subst s/b)))
+       (map (lambda (s/b) (reify q (subst s/b) (bds s/b)))
          (run-goal n (conj g ...)))))))
 
 (define-syntax run*
