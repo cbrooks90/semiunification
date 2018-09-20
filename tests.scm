@@ -154,6 +154,17 @@
     (<= `(f ,a ,b ,c ,d ,e ,f ,g 9) `(f ,b ,c ,d ,e ,f ,g ,h ,d)))
   '((_0 _1 _2 9 9 9 9 9)))
 
+(test-check 'lower-bound-chain
+  (run* (a b c d e f g)
+    (<= a b)
+    (<= b c)
+    (<= c d)
+    (<= d e)
+    (<= e f)
+    (<= f g)
+    (== a 17))
+  '((17 17 17 17 17 17 17)))
+
 (test-check 'local-vs-nonlocal-separate
   (run* (x y z)
     (<= x '(g 3 4))
