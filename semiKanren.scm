@@ -51,7 +51,7 @@
                    (if s (factorize (cdr lb) (and ub (cdr ub)) bds s pairs)
                        (values #f #f bds pairs))))
       (values (cons t1 t2) s bds pairs)))
-   ((equal? lb ub) (values lb s bds pairs))
+   ((eqv? lb ub) (values lb s bds pairs))
    ((assp (lambda (x) (equal? (cons lb ub) x)) pairs)
     => (lambda (x) (values (cdr x) s bds pairs)))
    ((or ub (var? lb))
@@ -77,7 +77,7 @@
    ((var? v) v)
    ((and (pair? u) (pair? v))
     (cons (antiunify (car u) (car v)) (antiunify (cdr u) (cdr v))))
-   ((equal? u v) u)
+   ((eqv? u v) u)
    (else (var '⊥))))
 
 (define (adjust-upper-bound v term s bds vs)
@@ -103,7 +103,7 @@
       (let-values (((s bds vs) (semiunify (car l) (car r) s bds vs)))
         (if s (semiunify (cdr l) (cdr r) s bds vs)
             (values #f bds vs))))
-     ((equal? l r) (values s bds vs))
+     ((eqv? l r) (values s bds vs))
      (else (values #f bds vs)))))
 
 (define (<= u v)
@@ -171,7 +171,7 @@
   (syntax-rules ()
     ((fresh () g ...) (conj g ...))
     ((fresh (x0 x ...) g ...)
-     (call/fresh 'x_0
+     (call/fresh 'x0
        (lambda (x0)
          (fresh (x ...) g ...))))))
 
@@ -208,7 +208,7 @@
    ((null? s-inf) '())
    ((pair? s-inf)
     (cons (car s-inf)
-      (take-inf (and n (sub1 n)) (cdr s-inf))))
+      (take-inf (and n (- n 1)) (cdr s-inf))))
    (else (take-inf n (s-inf)))))
 
 (define (run-goal n g)
