@@ -165,6 +165,15 @@
     (== a 17))
   '((17 17 17 17 17 17 17)))
 
+(test-check 'update-middle-of-chain
+  (run* ()
+    (<= a b)
+    (<= b c)
+    (<= c d)
+    (== a `(f ,x ,y))
+    (== b `(f 32 71)))
+  '((f _0 _1) (f 32 71) (f 32 71) (f 32 71)))
+
 (test-check 'local-vs-nonlocal-separate
   (run* (x y z)
     (<= x '(g 3 4))
