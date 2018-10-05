@@ -165,13 +165,38 @@
     (== a 17))
   '((17 17 17 17 17 17 17)))
 
-(test-check 'update-middle-of-chain
-  (run* ()
+(test-check 'lower-bound-chain-fail
+  (run* (a b c d e f g)
     (<= a b)
     (<= b c)
     (<= c d)
-    (== a `(f ,x ,y))
-    (== b `(f 32 71)))
+    (<= d e)
+    (<= e f)
+    (<= f g)
+    (== a 2)
+    (== e 3))
+  '())
+
+(test-check 'upper-bound-chain-fail
+  (run* (a b c d e f g)
+    (<= a b)
+    (<= b c)
+    (<= c d)
+    (<= d e)
+    (<= e f)
+    (<= f g)
+    (== e 2)
+    (== a 3))
+  '())
+
+(test-check 'update-middle-of-chain
+  (run* (a b c d)
+    (fresh (x y)
+      (<= a b)
+      (<= b c)
+      (<= c d)
+      (== a `(f ,x ,y))
+      (== b `(f 32 71))))
   '((f _0 _1) (f 32 71) (f 32 71) (f 32 71)))
 
 (test-check 'local-vs-nonlocal-separate
