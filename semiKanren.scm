@@ -9,16 +9,17 @@
 (define bds cdr)
 (define empty-state (cons '() '()))
 
-(define (walk-s u s)
+(define (walk u s)
   (let ((pr (and (var? u) (assv u s))))
-    (if pr (walk-s (cdr pr) s) u)))
+    (if pr (walk (cdr pr) s) u)))
 
-(define (walk u s bds)
-  (let ((orig (walk-s u s)))
+(define (walk-approx u s bds lower?)
+  (let ((orig (walk u s)))
     (let loop ((u orig) (orig orig))
       (cond
-       ((bottom? u) orig)
-       ((var? u) (loop (walk-s (car (bounds u bds)) s) orig))
+       ((and lower? (bottom? u)) orig)
+       ((not (or lower? u)) orig)
+       ((var? u) (loop (walk ((if lower? car cdr) (bounds u bds)) s) orig))
        (else u)))))
 
 (define (bounds v li)
@@ -38,42 +39,41 @@
    #;((occurs x v s))
    (else (cons `(,x . ,v) s))))
 
-(define (unify u v s bds)
-  (let ((u (walk u s bds)) (v (walk v s bds)))
+(define (unify u v s)
+  (let ((u (walk u s)) (v (walk v s)))
     (cond
      ((eqv? u v) (values u s))
      ((var? u) (values v (ext-s u v s)))
      ((var? v) (values u (ext-s v u s)))
      ((and (pair? u) (pair? v))
-      (let*-values (((t1 s) (unify (car u) (car v) s bds))
-                    ((t2 s) (if s (unify (cdr u) (cdr v) s bds) (values #f #f))))
+      (let*-values (((t1 s) (unify (car u) (car v) s))
+                    ((t2 s) (if s (unify (cdr u) (cdr v) s) (values #f #f))))
         (if s (values (cons t1 t2) s) (values #f #f))))
      (else (values #f #f)))))
 
 ;; Helper functions for semiunification
 
 (define (factorize lb ub bds s pairs)
-  (cond
-   ((and (pair? lb) (or (pair? ub) (not ub)))
-    (let*-values (((t1 s bds pairs) (factorize (car lb) (and ub (car ub)) bds s pairs))
-                  ((t2 s bds pairs)
-                   (if s (factorize (cdr lb) (and ub (cdr ub)) bds s pairs)
-                       (values #f #f bds pairs))))
+  (let ((lb (walk-approx lb s bds #t)) (ub (walk-approx ub s bds #f)))
+    (cond
+   ((and (pair? lb) (pair? ub))
+    (let*-values (((t1 s bds pairs) (factorize (car lb) (car ub) bds s pairs))
+                  ((t2 s bds pairs) (if s (factorize (cdr lb) (cdr ub) bds s pairs)
+                                        (values #f #f bds pairs))))
       (values (cons t1 t2) s bds pairs)))
    ((eqv? lb ub) (values lb s bds pairs))
    ((assp (lambda (x) (equal? (cons lb ub) x)) pairs)
     => (lambda (x) (values (cdr x) s bds pairs)))
-   ((or ub (var? lb))
+   (else
     (let-values (((s bds _) (semiunify lb ub s bds '())))
       (if s
-          (let ((x (vector (gensym))))
+          (let ((x (vector 'idk)))
             (values x s (cons (cons x (cons lb ub)) bds)
                     (cons (cons (cons lb ub) x) pairs)))
-          (values #f #f bds pairs))))
-   (else (values lb s bds pairs))))
+          (values #f #f bds pairs)))))))
 
 (define (adjust lb ub s bds v vs)
-  (if (var? lb)
+  (if (or (var? lb) (not ub))
       (values s (cons (cons v (cons lb ub)) bds) vs)
       (let-values (((term s bds _) (factorize lb ub bds s '())))
         (values (and s (ext-s v term s)) bds vs))))
@@ -101,7 +101,7 @@
       (adjust term (cdr b) s bds v vs))))
 
 (define (semiunify l r s bds vs)
-  (let ((l (walk l s bds)) (r (walk r s bds)))
+  (let ((l (walk l s)) (r (walk r s)))
     (cond
      ((and (var? l) (var? r))
       (let-values (((s bds vs) (adjust-upper-bound l r s bds vs)))
@@ -121,9 +121,7 @@
       (if s (cons (state s bds) '()) '()))))
 
 (define (== u v)
-  (lambda (s/b)
-    (let-values (((_ s) (unify u v (subst s/b) (bds s/b))))
-      (if s (cons (state s (bds s/b)) '()) '()))))
+  (conj2 (<= u v) (<= v u)))
 
 ;; The following code is from The Reasoned Schemer, 2nd ed. with license reproduced below:
 
@@ -189,7 +187,7 @@
    (string-append "_" (number->string n))))
 
 (define (reify-s v r)
-  (let ((v (walk-s v r)))
+  (let ((v (walk v r)))
     (cond
      ((var? v)
       (let* ((n (length r))
@@ -200,7 +198,7 @@
      (else r))))
 
 (define (walk* v s bds)
-  (let ((v (walk v s bds)))
+  (let ((v (walk-approx v s bds #t)))
     (cond
      ((var? v) v)
      ((pair? v) (cons (walk* (car v) s bds) (walk* (cdr v) s bds)))
