@@ -1,21 +1,30 @@
 (define (var c) (vector c))
 (define (var? x) (vector? x))
 
-(define (bottom? x) (equal? x (var '⊥)))
+(define bottom (var '⊥))
+(define (bottom? x) (eqv? x bottom))
 
 (define (state s bds) (cons s bds))
 (define subst car)
 (define bds cdr)
 (define empty-state (cons '() '()))
 
-(define (walk u s)
+(define (walk-s u s)
   (let ((pr (and (var? u) (assv u s))))
-    (if pr (walk (cdr pr) s) u)))
+    (if pr (walk-s (cdr pr) s) u)))
+
+(define (walk u s bds)
+  (let ((orig (walk-s u s)))
+    (let loop ((u orig) (orig orig))
+      (cond
+       ((bottom? u) orig)
+       ((var? u) (loop (walk-s (car (bounds u bds)) s) orig))
+       (else u)))))
 
 (define (bounds v li)
   (let ((pr (assv v li)))
     (if pr (cdr pr)
-        `(,(vector 'init (vector-ref v 0)) . #f))))
+        (cons bottom #f))))
 
 (define (occurs x v s)
   (let ((v (walk v s)))
@@ -29,15 +38,15 @@
    #;((occurs x v s))
    (else (cons `(,x . ,v) s))))
 
-(define (unify u v s)
-  (let ((u (walk u s)) (v (walk v s)))
+(define (unify u v s bds)
+  (let ((u (walk u s bds)) (v (walk v s bds)))
     (cond
      ((eqv? u v) (values u s))
      ((var? u) (values v (ext-s u v s)))
      ((var? v) (values u (ext-s v u s)))
      ((and (pair? u) (pair? v))
-      (let*-values (((t1 s) (unify (car u) (car v) s))
-                    ((t2 s) (if s (unify (cdr u) (cdr v) s) (values #f #f))))
+      (let*-values (((t1 s) (unify (car u) (car v) s bds))
+                    ((t2 s) (if s (unify (cdr u) (cdr v) s bds) (values #f #f))))
         (if s (values (cons t1 t2) s) (values #f #f))))
      (else (values #f #f)))))
 
@@ -78,21 +87,21 @@
    ((and (pair? u) (pair? v))
     (cons (antiunify (car u) (car v)) (antiunify (cdr u) (cdr v))))
    ((eqv? u v) u)
-   (else (var '⊥))))
+   (else bottom)))
 
 (define (adjust-upper-bound v term s bds vs)
-  (let-values (((_ s) (if (assoc v vs) (unify term (cdr (assoc v vs)) s) (values #f s))))
+  (let-values (((_ s) (if (assoc v vs) (unify term (cdr (assoc v vs)) s bds) (values #f s))))
     (let ((b (bounds v bds))
           (vs (cons (cons v term) vs)))
       (adjust (car b) (antiunify (cdr b) term) s bds v vs))))
 
 (define (adjust-lower-bound v term s bds vs)
   (let ((b (bounds v bds)))
-    (let-values (((term _) (unify (car b) term s)))
+    (let-values (((term _) (unify (car b) term s bds)))
       (adjust term (cdr b) s bds v vs))))
 
 (define (semiunify l r s bds vs)
-  (let ((l (walk l s)) (r (walk r s)))
+  (let ((l (walk l s bds)) (r (walk r s bds)))
     (cond
      ((and (var? l) (var? r))
       (let-values (((s bds vs) (adjust-upper-bound l r s bds vs)))
@@ -113,7 +122,7 @@
 
 (define (== u v)
   (lambda (s/b)
-    (let-values (((_ s) (unify u v (subst s/b))))
+    (let-values (((_ s) (unify u v (subst s/b) (bds s/b))))
       (if s (cons (state s (bds s/b)) '()) '()))))
 
 ;; The following code is from The Reasoned Schemer, 2nd ed. with license reproduced below:
@@ -180,7 +189,7 @@
    (string-append "_" (number->string n))))
 
 (define (reify-s v r)
-  (let ((v (walk v r)))
+  (let ((v (walk-s v r)))
     (cond
      ((var? v)
       (let* ((n (length r))
@@ -191,11 +200,9 @@
      (else r))))
 
 (define (walk* v s bds)
-  (let ((v (walk v s)))
+  (let ((v (walk v s bds)))
     (cond
-     ((var? v)
-      (let-values (((t s bds prs) (factorize (walk (car (bounds v bds)) s) #f bds s '())))
-        (if (null? prs) (walk* t s bds) v)))
+     ((var? v) v)
      ((pair? v) (cons (walk* (car v) s bds) (walk* (cdr v) s bds)))
      (else v))))
 
