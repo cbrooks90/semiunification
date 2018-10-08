@@ -34,17 +34,6 @@
    #;((occurs x v s))
    (else (cons `(,x . ,v) s))))
 
-(define (old-unify u v s)
-  (let ((u (walk u s)) (v (walk v s)))
-    (cond
-     ((eqv? u v) s)
-     ((var? u) (ext-s u v s))
-     ((var? v) (ext-s v u s))
-     ((and (pair? u) (pair? v))
-      (let ((s (old-unify (car u) (car v) s)))
-        (and s (old-unify (cdr u) (cdr v) s))))
-     (else #f))))
-
 ;; Helper functions for semiunification
 
 (define (antiunify u v)
@@ -68,16 +57,19 @@
       (and t (cons t (unify (cdr u) (cdr v) s)))))
    (else #f)))
 
-;; Might still need to make a fresh variable for bounds which aren't equal
 (define (adjust lb ub s bds v vs)
-  (if (or (var? lb) (bottom? lb) (top? ub))
-      (values v s (cons (cons v (cons lb ub)) bds) vs)
-      (let-values (((t s bds _) (semiunify lb ub s bds '())))
-        (values t (and s (ext-s v t s)) bds vs))))
+  (let-values (((t s bds _) (semiunify lb ub s bds '())))
+    (if (and (eqv? lb ub) (not (bottom? lb)))
+        (values t (and s (ext-s v t s)) bds vs)
+        (values t s (cons (cons v (cons lb ub)) bds) vs))))
 
 ;; I'm not sure if this will work correctly when unifying three or more terms in an equation
 (define (adjust-upper-bound v term s bds vs)
-  (let ((s (if (assoc v vs) (old-unify term (cdr (assoc v vs)) s) s)))
+  (let-values
+      (((_1 s bds _2)
+        (if (assoc v vs)
+            (semiunify (cons term (cdr (assoc v vs))) (cons (cdr (assoc v vs)) term) s bds '())
+            (values #f s bds '()))))
     (let ((b (bounds v bds))
           (vs (cons (cons v term) vs)))
       (adjust (car b) (antiunify (cdr b) term) s bds v vs))))
