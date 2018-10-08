@@ -1,8 +1,11 @@
 (define (var c) (vector c))
 (define (var? x) (vector? x))
 
-(define bottom (var '⊥))
+(define bottom '⊥)
 (define (bottom? x) (eqv? x bottom))
+
+(define top '⊤)
+(define (top? x) (eqv? x top))
 
 (define (state s bds) (cons s bds))
 (define subst car)
@@ -13,19 +16,11 @@
   (let ((pr (and (var? u) (assv u s))))
     (if pr (walk (cdr pr) s) u)))
 
-(define (walk-approx u s bds lower?)
-  (let ((orig (walk u s)))
-    (let loop ((u orig) (orig orig))
-      (cond
-       ((and lower? (bottom? u)) orig)
-       ((not (or lower? u)) orig)
-       ((var? u) (loop (walk ((if lower? car cdr) (bounds u bds)) s) orig))
-       (else u)))))
-
+;; Do we need to walk the individual bounds?
 (define (bounds v li)
   (let ((pr (assv v li)))
     (if pr (cdr pr)
-        (cons bottom #f))))
+        (cons bottom top))))
 
 (define (occurs x v s)
   (let ((v (walk v s)))
@@ -39,85 +34,80 @@
    #;((occurs x v s))
    (else (cons `(,x . ,v) s))))
 
-(define (unify u v s)
+(define (old-unify u v s)
   (let ((u (walk u s)) (v (walk v s)))
     (cond
-     ((eqv? u v) (values u s))
-     ((var? u) (values v (ext-s u v s)))
-     ((var? v) (values u (ext-s v u s)))
+     ((eqv? u v) s)
+     ((var? u) (ext-s u v s))
+     ((var? v) (ext-s v u s))
      ((and (pair? u) (pair? v))
-      (let*-values (((t1 s) (unify (car u) (car v) s))
-                    ((t2 s) (if s (unify (cdr u) (cdr v) s) (values #f #f))))
-        (if s (values (cons t1 t2) s) (values #f #f))))
-     (else (values #f #f)))))
+      (let ((s (old-unify (car u) (car v) s)))
+        (and s (old-unify (cdr u) (cdr v) s))))
+     (else #f))))
 
 ;; Helper functions for semiunification
 
-(define (factorize lb ub bds s pairs)
-  (let ((lb (walk-approx lb s bds #t)) (ub (walk-approx ub s bds #f)))
-    (cond
-   ((and (pair? lb) (pair? ub))
-    (let*-values (((t1 s bds pairs) (factorize (car lb) (car ub) bds s pairs))
-                  ((t2 s bds pairs) (if s (factorize (cdr lb) (cdr ub) bds s pairs)
-                                        (values #f #f bds pairs))))
-      (values (cons t1 t2) s bds pairs)))
-   ((eqv? lb ub) (values lb s bds pairs))
-   ((assp (lambda (x) (equal? (cons lb ub) x)) pairs)
-    => (lambda (x) (values (cdr x) s bds pairs)))
-   (else
-    (let-values (((s bds _) (semiunify lb ub s bds '())))
-      (if s
-          (let ((x (vector 'idk)))
-            (values x s (cons (cons x (cons lb ub)) bds)
-                    (cons (cons (cons lb ub) x) pairs)))
-          (values #f #f bds pairs)))))))
-
-(define (adjust lb ub s bds v vs)
-  (if (or (var? lb) (not ub))
-      (values s (cons (cons v (cons lb ub)) bds) vs)
-      (let-values (((term s bds _) (factorize lb ub bds s '())))
-        (values (and s (ext-s v term s)) bds vs))))
-
 (define (antiunify u v)
   (cond
-   ((not u) v)
-   ((not v) u)
-   ((var? u) u)
-   ((var? v) v)
+   ((top? u) v)
+   ((top? v) u)
+   ((or (var? u) (bottom? u)) u)
+   ((or (var? v) (bottom? v)) v)
    ((and (pair? u) (pair? v))
     (cons (antiunify (car u) (car v)) (antiunify (cdr u) (cdr v))))
    ((eqv? u v) u)
    (else bottom)))
 
+(define (unify u v s)
+  (cond
+   ((eqv? u v) u)
+   ((or (var? u) (bottom? u)) v)
+   ((or (var? v) (bottom? v)) u)
+   ((and (pair? u) (pair? v))
+    (let ((t (unify (car u) (car v) s)))
+      (and t (cons t (unify (cdr u) (cdr v) s)))))
+   (else #f)))
+
+;; Might still need to make a fresh variable for bounds which aren't equal
+(define (adjust lb ub s bds v vs)
+  (if (or (var? lb) (bottom? lb) (top? ub))
+      (values v s (cons (cons v (cons lb ub)) bds) vs)
+      (let-values (((t s bds _) (semiunify lb ub s bds '())))
+        (values t (and s (ext-s v t s)) bds vs))))
+
+;; I'm not sure if this will work correctly when unifying three or more terms in an equation
 (define (adjust-upper-bound v term s bds vs)
-  (let-values (((_ s) (if (assoc v vs) (unify term (cdr (assoc v vs)) s bds) (values #f s))))
+  (let ((s (if (assoc v vs) (old-unify term (cdr (assoc v vs)) s) s)))
     (let ((b (bounds v bds))
           (vs (cons (cons v term) vs)))
       (adjust (car b) (antiunify (cdr b) term) s bds v vs))))
 
 (define (adjust-lower-bound v term s bds vs)
   (let ((b (bounds v bds)))
-    (let-values (((term _) (unify (car b) term s bds)))
-      (adjust term (cdr b) s bds v vs))))
+    (adjust (unify (car b) term s) (cdr b) s bds v vs)))
 
 (define (semiunify l r s bds vs)
   (let ((l (walk l s)) (r (walk r s)))
     (cond
+     ((or (eqv? l r) (bottom? l) (top? r)) (values l s bds vs))
      ((and (var? l) (var? r))
-      (let-values (((s bds vs) (adjust-upper-bound l r s bds vs)))
-        (adjust-lower-bound r l s bds vs)))
+      ;; I wonder if we can get away with only updating upper bounds here
+      (let-values (((t s bds vs) (adjust-lower-bound r l s bds vs)))
+        (adjust-upper-bound l r s bds vs)))
      ((var? l) (adjust-upper-bound l r s bds vs))
-     ((and (var? r) (not (bottom? r))) (adjust-lower-bound r l s bds vs))
+     ((and (var? r) (not (pair? l)))
+      (semiunify l (cdr (bounds r bds)) (ext-s r l s) bds vs))
+     ((var? r) (adjust-lower-bound r l s bds vs))
      ((and (pair? l) (pair? r))
-      (let-values (((s bds vs) (semiunify (car l) (car r) s bds vs)))
-        (if s (semiunify (cdr l) (cdr r) s bds vs)
-            (values #f bds vs))))
-     ((eqv? l r) (values s bds vs))
-     (else (values #f bds vs)))))
+      (let*-values (((t1 s bds vs) (semiunify (car l) (car r) s bds vs))
+                    ((t2 s bds vs) (if s (semiunify (cdr l) (cdr r) s bds vs)
+                                       (values #f #f bds vs))))
+        (values (cons t1 t2) s bds vs)))
+     (else (values #f #f bds vs)))))
 
 (define (<= u v)
   (lambda (s/b)
-    (let-values (((s bds _) (semiunify u v (subst s/b) (bds s/b) '())))
+    (let-values (((t s bds _) (semiunify u v (subst s/b) (bds s/b) '())))
       (if s (cons (state s bds) '()) '()))))
 
 (define (== u v)
@@ -198,7 +188,7 @@
      (else r))))
 
 (define (walk* v s bds)
-  (let ((v (walk-approx v s bds #t)))
+  (let ((v (walk v s)))
     (cond
      ((var? v) v)
      ((pair? v) (cons (walk* (car v) s bds) (walk* (cdr v) s bds)))
