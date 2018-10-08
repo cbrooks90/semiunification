@@ -82,10 +82,6 @@
   (let ((l (walk l s)) (r (walk r s)))
     (cond
      ((or (eqv? l r) (bottom? l) (top? r)) (values l s bds vs))
-     ((and (var? l) (var? r))
-      ;; I wonder if we can get away with only updating upper bounds here
-      (let-values (((t s bds vs) (adjust-lower-bound r l s bds vs)))
-        (adjust-upper-bound l r s bds vs)))
      ((var? l) (adjust-upper-bound l r s bds vs))
      ((and (var? r) (not (pair? l)))
       (semiunify l (cdr (bounds r bds)) (ext-s r l s) bds vs))
