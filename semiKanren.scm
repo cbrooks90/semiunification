@@ -55,7 +55,7 @@
    ((and (pair? u) (pair? v))
     (let ((t (unify (car u) (car v))))
       (and t (cons t (unify (cdr u) (cdr v))))))
-   (else #f)))
+   (else top)))
 
 (define (adjust lb ub s bds v vs)
   (let-values (((t s bds _) (semiunify lb ub s bds '())))
