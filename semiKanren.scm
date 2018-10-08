@@ -47,14 +47,14 @@
    ((eqv? u v) u)
    (else bottom)))
 
-(define (unify u v s)
+(define (unify u v)
   (cond
    ((eqv? u v) u)
    ((or (var? u) (bottom? u)) v)
    ((or (var? v) (bottom? v)) u)
    ((and (pair? u) (pair? v))
-    (let ((t (unify (car u) (car v) s)))
-      (and t (cons t (unify (cdr u) (cdr v) s)))))
+    (let ((t (unify (car u) (car v))))
+      (and t (cons t (unify (cdr u) (cdr v))))))
    (else #f)))
 
 (define (adjust lb ub s bds v vs)
@@ -76,7 +76,7 @@
 
 (define (adjust-lower-bound v term s bds vs)
   (let ((b (bounds v bds)))
-    (adjust (unify (car b) term s) (cdr b) s bds v vs)))
+    (adjust (unify (car b) term) (cdr b) s bds v vs)))
 
 (define (semiunify l r s bds vs)
   (let ((l (walk l s)) (r (walk r s)))
