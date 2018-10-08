@@ -16,7 +16,6 @@
   (let ((pr (and (var? u) (assv u s))))
     (if pr (walk (cdr pr) s) u)))
 
-;; Do we need to walk the individual bounds?
 (define (bounds v li)
   (let ((pr (assv v li)))
     (if pr (cdr pr)
@@ -34,14 +33,10 @@
    #;((occurs x v s))
    (else (cons `(,x . ,v) s))))
 
-;; Helper functions for semiunification
-
 (define (antiunify u v)
   (cond
-   ((top? u) v)
-   ((top? v) u)
-   ((or (var? u) (bottom? u)) u)
-   ((or (var? v) (bottom? v)) v)
+   ((or (var? u) (bottom? u) (top? v)) u)
+   ((or (var? v) (bottom? v) (top? u)) v)
    ((and (pair? u) (pair? v))
     (cons (antiunify (car u) (car v)) (antiunify (cdr u) (cdr v))))
    ((eqv? u v) u)
@@ -57,51 +52,50 @@
       (and t (cons t (unify (cdr u) (cdr v))))))
    (else top)))
 
-(define (adjust lb ub s bds v vs)
+;; Semiunification
+
+(define (check-new-bounds v lb ub s bds vs)
   (let-values (((t s bds _) (semiunify lb ub s bds '())))
     (if (and (eqv? lb ub) (not (bottom? lb)))
         (values t (and s (ext-s v t s)) bds vs)
         (values t s (cons (cons v (cons lb ub)) bds) vs))))
 
-;; I'm not sure if this will work correctly when unifying three or more terms in an equation
 (define (adjust-upper-bound v term s bds vs)
-  (let-values
-      (((_1 s bds _2)
-        (if (assoc v vs)
-            (semiunify (cons term (cdr (assoc v vs))) (cons (cdr (assoc v vs)) term) s bds '())
-            (values #f s bds '()))))
-    (let ((b (bounds v bds))
-          (vs (cons (cons v term) vs)))
-      (adjust (car b) (antiunify (cdr b) term) s bds v vs))))
+  (let ((b (bounds v bds)))
+    (check-new-bounds v (car b) (antiunify (cdr b) term) s bds vs)))
 
 (define (adjust-lower-bound v term s bds vs)
   (let ((b (bounds v bds)))
-    (adjust (unify (car b) term) (cdr b) s bds v vs)))
+    (check-new-bounds v (unify (car b) term) (cdr b) s bds vs)))
+
+(define (unify-rhs v t1 t2 s bds vs)
+  (let-values (((t s bds _) (semiunify t2 t1 s bds '())))
+    (adjust-upper-bound v t s bds vs)))
 
 (define (semiunify l r s bds vs)
   (let ((l (walk l s)) (r (walk r s)))
     (cond
      ((or (eqv? l r) (bottom? l) (top? r)) (values l s bds vs))
-     ((var? l) (adjust-upper-bound l r s bds vs))
+     ((var? l)
+      (if (assoc l vs)
+          (unify-rhs l r (cdr (assoc l vs)) s bds vs)
+          (adjust-upper-bound l r s bds (cons (cons l r) vs))))
      ((and (var? r) (not (pair? l)))
       (semiunify l (cdr (bounds r bds)) (ext-s r l s) bds vs))
      ((var? r) (adjust-lower-bound r l s bds vs))
      ((and (pair? l) (pair? r))
       (let*-values (((t1 s bds vs) (semiunify (car l) (car r) s bds vs))
                     ((t2 s bds vs) (if s (semiunify (cdr l) (cdr r) s bds vs)
-                                       (values #f #f bds vs))))
+                                       (values top #f bds vs))))
         (values (cons t1 t2) s bds vs)))
-     (else (values #f #f bds vs)))))
+     (else (values top #f bds vs)))))
 
 (define (<= u v)
   (lambda (s/b)
     (let-values (((t s bds _) (semiunify u v (subst s/b) (bds s/b) '())))
       (if s (cons (state s bds) '()) '()))))
 
-(define (== u v)
-  (conj2 (<= u v) (<= v u)))
-
-;; The following code is from The Reasoned Schemer, 2nd ed. with license reproduced below:
+;; The following code is based on The Reasoned Schemer, 2nd ed.
 
 ;; Copyright © 2018 Daniel P. Friedman, William E. Byrd, Oleg Kiselyov, and Jason Hemann
 
@@ -142,6 +136,9 @@
 (define (conj2 g1 g2)
   (lambda (s/b)
     (append-map-inf g2 (g1 s/b))))
+
+(define (== u v)
+  (conj2 (<= u v) (<= v u)))
 
 (define-syntax conj
   (syntax-rules ()
