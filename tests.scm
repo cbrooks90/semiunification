@@ -197,7 +197,7 @@
       (<= c d)
       (== a `(f ,x ,y))
       (== b `(f 32 71))))
-  '((f _0 _1) (f 32 71) (f 32 71) (f 32 71)))
+  '(((f _0 _1) (f 32 71) (f 32 71) (f 32 71))))
 
 (test-check 'local-vs-nonlocal-separate
   (run* (x y z)
