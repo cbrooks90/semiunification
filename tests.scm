@@ -149,6 +149,24 @@
     (<= `(f ,w ,x ,x) `(f ,y (f 3 4) (f ,z ,y))))
   '((_0 4 3 _1)))
 
+(test-check 'three-way-unify-1
+  (run* (a b x y z w)
+    (<= `(f ,x (g ,x) ,y) `(f (h ,z 3 ,a) (g (h 52 ,w ,b)) (h 52 3 99)))
+    (== y x))
+  '((99 99 (h 52 3 99) (h 52 3 99) 52 3)))
+
+(test-check 'three-way-unify-2
+  (run* (a b x y z w)
+    (<= `(f ,x (g ,x) ,y) `(f (h ,z 3 ,a) (g (h 52 ,w ,b)) (h 52 3 ,b)))
+    (== y x))
+  '((_0 _0 (h 52 3 99) (h 52 3 99) 52 3)))
+
+(test-check 'non-three-way-unify
+  (run* (a b c d x y)
+    (<= `(f ,x ,y) `(f (g ,a ,b) (h (g 3 4) (g ,c ,d))))
+    (<= `(h ,x ,x) y))
+  '((_0 _1 3 4 _2 (h _3 _3))))
+
 (test-check 'local-chain
   (run* (a b c d e f g h)
     (<= `(f ,a ,b ,c ,d ,e ,f ,g 9) `(f ,b ,c ,d ,e ,f ,g ,h ,d)))
