@@ -33,6 +33,13 @@
    #;((occurs x v s))
    (else (cons `(,x . ,v) s))))
 
+(define (ext-b x lb ub bds)
+  (let loop ((bds bds))
+    (cond
+     ((null? bds) (cons (cons x (cons lb ub)) '()))
+     ((eqv? x (caar bds)) (cons (cons x (cons lb ub)) (cdr bds)))
+     (else (cons (car bds) (loop (cdr bds)))))))
+
 (define (antiunify u v)
   (cond
    ((or (var? u) (bottom? u) (top? v)) u)
@@ -57,8 +64,8 @@
 (define (check-new-bounds v lb ub s bds vs)
   (let-values (((t s bds _) (semiunify lb ub s bds '())))
     (if (and (eqv? lb ub) (not (bottom? lb)))
-        (values t (and s (ext-s v t s)) bds vs)
-        (values t s (cons (cons v (cons lb ub)) bds) vs))))
+        (values t (and s (ext-s v t s)) (remp (lambda (x) (eqv? (car x) v)) bds) vs)
+        (values t s (ext-b v lb ub bds) vs))))
 
 (define (adjust-upper-bound v term s bds vs)
   (let ((b (bounds v bds)))
