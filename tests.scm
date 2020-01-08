@@ -12,6 +12,13 @@
                      "Failed: ~a~%Expected: ~a~%Computed: ~a~%"
                      'tested-expression expected produced)))))))
 
+#;(test-check 'three-way-unify-1
+  (run* (a b x y z w)
+    (<= `(f ,x (g ,x) ,y) `(f (h ,z 3 ,a) (g (h 52 ,w ,b)) (h 52 3 99)))
+    (== y x))
+  '((99 99 (h 52 3 99) (h 52 3 99) 52 3)))
+
+(begin
 ;; Antiunification tests
 
 (test-check 'local-antiunify-1
@@ -333,4 +340,4 @@
     (fresh (y z)
       (<= x y)
       (<= x (cons y z))))
-  '(_0))
+  '(_0)))
