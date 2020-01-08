@@ -62,10 +62,10 @@
 ;; Semiunification
 
 (define (check-new-bounds v lb ub s bds vs)
-  (let-values (((t s bds _) (semiunify lb ub s bds '())))
-    (if (and (eqv? lb ub) (not (bottom? lb)))
-        (values t (and s (ext-s v t s)) (remp (lambda (x) (eqv? (car x) v)) bds) vs)
-        (values t s (ext-b v lb ub bds) vs))))
+  (let-values (((s bds _) (semiunify lb ub s bds '())))
+    (if (eqv? lb ub)
+        (values (and s (ext-s v lb s)) (remp (lambda (x) (eqv? (car x) v)) bds) vs)
+        (values s (ext-b v lb ub bds) vs))))
 
 (define (adjust-upper-bound v term s bds vs)
   (let ((b (bounds v bds)))
@@ -76,30 +76,29 @@
     (check-new-bounds v (unify (car b) term) (cdr b) s bds vs)))
 
 (define (unify-rhs v t1 t2 s bds vs)
-  (let-values (((t s bds _) (semiunify t2 t1 s bds '())))
+  (let-values (((s bds _) (semiunify t2 t1 s bds '())))
     (adjust-upper-bound v t s bds vs)))
 
 (define (semiunify l r s bds vs)
   (let ((l (walk l s)) (r (walk r s)))
     (cond
-     ((or (eqv? l r) (bottom? l) (top? r)) (values l s bds vs))
+     ((or (eqv? l r) (bottom? l) (top? r)) (values s bds vs))
      ((var? l)
       (if (assoc l vs)
           (unify-rhs l r (cdr (assoc l vs)) s bds vs)
           (adjust-upper-bound l r s bds (cons (cons l r) vs))))
+     ;; Should this part be in check-new-bounds?
      ((and (var? r) (not (pair? l)))
-      (semiunify l (cdr (bounds r bds)) (ext-s r l s) bds vs))
+      (semiunify l (cdr (bounds r bds)) (ext-s r l s) (remp (lambda (x) (eqv? (car x) r)) bds) vs))
      ((var? r) (adjust-lower-bound r l s bds vs))
      ((and (pair? l) (pair? r))
-      (let*-values (((t1 s bds vs) (semiunify (car l) (car r) s bds vs))
-                    ((t2 s bds vs) (if s (semiunify (cdr l) (cdr r) s bds vs)
-                                       (values top #f bds vs))))
-        (values (cons t1 t2) s bds vs)))
-     (else (values top #f bds vs)))))
+      (let-values (((s bds vs) (semiunify (car l) (car r) s bds vs)))
+        (if s (semiunify (cdr l) (cdr r) s bds vs) (values #f bds vs))))
+     (else (values #f bds vs)))))
 
 (define (<= u v)
   (lambda (s/b)
-    (let-values (((t s bds _) (semiunify u v (subst s/b) (bds s/b) '())))
+    (let-values (((s bds _) (semiunify u v (subst s/b) (bds s/b) '())))
       (if s (cons (state s bds) '()) '()))))
 
 ;; The following code is based on The Reasoned Schemer, 2nd ed.
